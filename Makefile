@@ -34,7 +34,6 @@ major_args = message
 
 build:
 	docker build \
-	--build-arg THING="value" \
 	--tag ${IMAGE_NAME}\:${CUR_VERSION} \
 	--tag ${IMAGE_NAME}\:latest \.
 
