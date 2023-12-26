@@ -1,0 +1,8 @@
+services:
+  translator:
+    image: speech2text:latest
+    volumes: 
+      - whisper_models:/var/models
+
+volumes:
+  whisper_models:
