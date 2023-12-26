@@ -6,7 +6,7 @@ ARG GROUP_ID=1000
 
 # Package installation, add packages before &&
 RUN apt-get update && apt-get install -qq -y --no-install-recommends \
-    bash python3 ffmpeg python3-pip inotify-tools && \
+    bash python3 ffmpeg python3-pip inotify-tools jq && \
     rm -rf /var/lib/apt/lists/*
 
 # User creation
