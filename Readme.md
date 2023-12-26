@@ -14,6 +14,7 @@ A container which translates audio files to text files and places those text fil
 ```JSON
 [ 
 	{ magicword: "uni", keepaudiofile: "relative/folder", transcript: "relative/file", email: "email@address.fake" },
+	{ magicword: "uni", keepaudiofile: "relative/folder", transcript: "relative/file", filename:"uniseuranta", email: "email@address.fake" },
 	{ magicword: "default", keepaudiofile: "relative/folder", transcript: "relative/file"}
 ]
 ```

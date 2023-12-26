@@ -24,4 +24,4 @@ COPY scripts/* /app/
 
 USER ${USER}
 # Bash shell entrypoint for monitoring
-ENTRYPOINT ["/bin/bash", "/app/record_watcher.sh"]
+#ENTRYPOINT ["/bin/bash", "/app/record_watcher.sh"]

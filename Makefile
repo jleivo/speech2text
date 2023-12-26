@@ -38,8 +38,8 @@ build:
 	--tag ${IMAGE_NAME}\:latest \.
 
 clean:
-	docker image rm "${IMAGE_NAME}"\:"${CUR_VERSION}"
-	docker image rm "${IMAGE_NAME}"\:latest
+	docker image rm -f "${IMAGE_NAME}"\:"${CUR_VERSION}"
+	docker image rm -f "${IMAGE_NAME}"\:latest
 
 commit:
 	@echo "Commiting version $(VERSION)"
