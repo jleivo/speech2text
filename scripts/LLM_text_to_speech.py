@@ -13,12 +13,25 @@ import sys
 import time
 import os
 import json
+import shutil
+# email joy
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
+supported_files = [".mp3",".wav",".m4a"]
 
 # our whisper AI model
 class transciber:
 
     model_location = "/var/models"
     cpu_fp = {'fp16':False}
+    smtp_server = ""
+    smtp_port = ""
+    sender_email = ""
+    config = {}
 
     def __init__(self,model_size = "medium"):
         self.model = whisper.load_model(model_size, download_root = self.model_location )
@@ -27,6 +40,117 @@ class transciber:
         result = self.model.transcribe(speech_file)
         return(result["text"])
 
+    def load_config(self):
+        # check if email server configuration is defined in /config.json
+        if not os.path.isfile('/config.json'):
+            print("No email configuration")
+        else:
+            with open('/config.json') as f:
+                # try to load config file, exit out if not valid json
+                try:
+                    emaildata = json.load(f)
+                except Exception as e:
+                    print("Error loading config file")
+                    print(e)
+                    sys.exit(1)
+            # Set internal variables
+            try:
+                self.smtp_server = emaildata["smtp_server"]
+                self.smtp_port = emaildata["smtp_port"]
+                self.sender_email = emaildata["sender_email"]
+            except Exception as e:
+                print("Error loading email configuration")
+                print(e)
+                sys.exit(1)
+
+        with open('/targets.json') as f:
+            # try to load config file, exit out if not valid json
+            try:
+                config = json.load(f)
+            except Exception as e:
+                print("Error loading config file")
+                print(e)
+                sys.exit(1)
+        
+        # verify that key default exists in the dictionary config
+        if 'default' not in config: 
+            print("Error: key default not found in config file"
+                + "/targets.json"
+                + "Exiting...."
+            )
+            sys.exit(1)
+
+        self.config = config
+
+    def handle_output(self,text,folder,filename):
+
+        # magic word is first word from the variable text
+        magic_word = text.split()[-1]
+        # check if magic word is in the dictionary config
+        if magic_word in self.config:
+            # get the configurion from the dictionary
+            details = self.config[magic_word]
+        else:
+            # if magic word is not in the dictionary, get the default
+            details = self.config['default']
+        if not 'filename' in details:
+            # filename is the same as the original filename, but the file type
+            # is changed to md
+            details['filename'] = filename.rsplit('.', 0)[0] + ".md"
+        # Append the text to the file located in details['transcript'] folder 
+        # with the filename details['filename']. Create file, if it doesn't exist
+        with open("/target/" + details['transcript'] + "/" + details['filename'], 'a') as f:
+            # check if details require timestamp (timestamp: True) and prepend
+            # timestamp to the text in the format of YYYY-MM-DD HH:MM:SS
+            if 'timestamp' in details and details['timestamp']:
+                text = time.strftime("%Y-%m-%d %H:%M:%S") + " " + text
+            f.write(text + "\n")
+            # Check if the audio file should be kept (keepaudiofile is not False)
+            # If not False, move the audio file to the folder specified in keepaudiofile
+            # and append a Markdown link to the file in the text
+            if 'keepaudiofile' in details and details['keepaudiofile']:
+                # check if target file name is already taken, if it is, append a unix 
+                # epoch time stamp to the file name just before the file type
+                if os.path.isfile("/target/" + details['keepaudiofile'] + "/" + filename):
+                    print("File name already taken, appending unix epoch time stamp to file name")
+                    filename_epoch = filename.rsplit('.', 0)[0] + "_" + str(int(time.time())) + "." + filename.split('.')[-1]
+                    print(f"Moving audio file {filename_epoch} to {details['keepaudiofile']}")
+                    # file rename using shutil.move in case the folders map to different filesystems
+                    shutil.move(folder + "/" + filename, "/target/" + details['keepaudiofile'] + "/" + filename_epoch)
+                else:
+                    print(f"Moving audio file {filename} to {details['keepaudiofile']}")
+                    shutil.move(folder + "/" + filename, "/target/" + details['keepaudiofile'] + "/" + filename)
+                f.write(f"![[{filename}]]")
+            else:
+                print(f"Removing file {filename}")
+                os.remove(folder + "/" + filename)
+                
+            f.close()
+
+    def send_email(self, sender_email, receiver_email, subject, message, attachment=None):
+        msg = MIMEMultipart()
+        msg['From'] = self.sender_email
+        msg['To'] = receiver_email
+        msg['Subject'] = subject
+
+        body = message
+        msg.attach(MIMEText(body, 'plain'))
+
+        if attachment:
+            filename = attachment
+            attachment = open(attachment, "rb")
+
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload((attachment).read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', "attachment; filename= %s" % filename)
+
+            msg.attach(part)
+
+        server = smtplib.SMTP('your_smtp_server_address', 25)
+        server.sendmail(sender_email, receiver_email, msg.as_string())
+        server.quit()
+    
 
 
 ################################# FUNCTIONS ###################################
@@ -49,60 +173,10 @@ def init(arguments):
         raise(e)
     return results
 
-def load_config():
-    with open('/targets.json') as f:
-        # try to load config file, exit out if not valid json
-        try:
-            config = json.load(f)
-        except Exception as e:
-            print("Error loading config file")
-            print(e)
-            sys.exit(1)
-    
-    # verify that key default exists in the dictionary config
-    if 'default' not in config: 
-        print("Error: key default not found in config file"
-              + "/targets.json"
-              + "Exiting...."
-           )
-        sys.exit(1)
-
-    return config
 
 # Check what to do with the given text, based on the first word
 # in the text. It is matched against the dictionary and actions are taken
 # accordingly
-def handle_output(text,config,folder,filename):
-
-    # magic word is first word from the variable text
-    magic_word = text.split()[0]
-    # check if magic word is in the dictionary config
-    if magic_word in config:
-        # get the configurion from the dictionary
-        details = config[magic_word]
-    else:
-        # if magic word is not in the dictionary, get the default
-        details = config['default']
-    if not 'filename' in details:
-        # filename is the same as the original filename, but the file type
-        # is changed to md
-        details['filename'] = filename.rsplit('.', 1)[0] + ".md"
-    # Append the text to the file located in details['transcript'] folder 
-    # with the filename details['filename']. Create file, if it doesn't exist
-    with open("/target/" + details['transcript'] + "/" + details['filename'], 'a') as f:
-        # check if details require timestamp (timestamp: True) and prepend
-        # timestamp to the text in the format of YYYY-MM-DD HH:MM:SS
-        if 'timestamp' in details and details['timestamp']:
-            text = time.strftime("%Y-%m-%d %H:%M:%S") + " " + text
-        f.write(text + "\n")
-        # Check if the audio file should be kept (keepaudiofile is not False)
-        # If not False, move the audio file to the folder specified in keepaudiofile
-        # and append a Markdown link to the file in the text
-        if 'keepaudiofile' in details and details['keepaudiofile']:
-            os.rename(folder + "/" + filename, "/target/" + details['keepaudiofile'] + "/" + filename)
-            f.write("![](" + filename + ")\n")
-        f.close()
-        
 
 ################################### LOGIC #####################################
 
@@ -115,21 +189,24 @@ def main(arguments):
 
     print("Starting whisper AI with model {}".format(args.model))
     AI = transciber(args.model)
+    print("Whisper AI started")
 
-    print("loading config file")
+    print("Loading config file")
     # Config file is always the /targets.json
-    config = load_config()
-    print("Config file loaded")
+    AI.load_config()
+    print("Config file(s) loaded")
 
     # start monitoring given folder to files
     print("Monitoring folder " + args.folder)
     while True:
         for filename in os.listdir(args.folder):
+            # check if the file ending is one of the supported ones
+            if not filename.endswith(tuple(supported_files)):
+                continue
             print("Transcribing " + filename)
             text = AI.transcribe(args.folder + "/" + filename)
             print("Transcribed text from file " + filename)
-            handle_output(text,config,args.folder,filename)
-            os.remove(args.folder + "/" + filename)
+            AI.handle_output(text,args.folder,filename)
             break
         time.sleep(1)
 
