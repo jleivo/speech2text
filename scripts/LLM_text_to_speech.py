@@ -159,10 +159,11 @@ class transciber:
                     print(f"Moving audio file {filename_epoch} to {details['keepaudiofile']}")
                     # file rename using shutil.move in case the folders map to different filesystems
                     shutil.move(folder + "/" + filename, "/target/" + details['keepaudiofile'] + "/" + filename_epoch)
+                    f.write(f"![[{filename_epoch}]]")
                 else:
                     print(f"Moving audio file {filename} to {details['keepaudiofile']}")
                     shutil.move(folder + "/" + filename, "/target/" + details['keepaudiofile'] + "/" + filename)
-                f.write(f"![[{filename}]]")
+                    f.write(f"![[{filename}]]")
             else:
                 print(f"Removing file {filename}")
                 os.remove(folder + "/" + filename)
@@ -170,10 +171,13 @@ class transciber:
             f.close()
 
     def send_email(self, receiver_email, subject, message, attachment=None):
+
         msg = MIMEMultipart()
         msg['From'] = self.sender_email
         msg['To'] = receiver_email
         msg['Subject'] = subject
+
+        print(f"Sending email to {receiver_email}")
 
         body = message
         msg.attach(MIMEText(body, 'plain'))
