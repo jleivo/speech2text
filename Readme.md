@@ -2,12 +2,13 @@
 
 A container which translates audio files to text files and places those text files to designated locations.
 
+```text
 /audio          - folder to which files appear
 /target         - folder to which files should be created
 /targets.json   - a text file describing the magic word which is used to move files
 /config.json    - simple email integration - supports only very simple SMTP
 /var/models     - location of the Whisper models, recommended to be cached with a volume
-
+```
 
 ## targets.json
 
@@ -36,4 +37,12 @@ example:
 
 ```json
 { "magic word": {"keepaudiofile": true, "email": "target@email.me", "transcript": "subject"}}
+```
+
+## Running the container
+
+```bash
+docker run -it -v /host/system/audiofolder:/audio -v whisper_models:/var/models \
+    -v /host/filedestinations:/target -v /host/user/targets.json:/targets.json \
+    -v /host/user/config.json./config.json  -u $(id -u ${USER}):$(id -g ${USER}) speech2text
 ```
