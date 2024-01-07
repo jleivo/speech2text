@@ -5,12 +5,35 @@ A container which translates audio files to text files and places those text fil
 /audio          - folder to which files appear
 /target         - folder to which files should be created
 /targets.json   - a text file describing the magic word which is used to move files
+/config.json    - simple email integration - supports only very simple SMTP
 /var/models     - location of the Whisper models, recommended to be cached with a volume
 
 
-## targets.txt
+## targets.json
 
-default,inbox			Where to place audio notes when they don't match any known magic word
-file,Resources/Obsidian/media	Where to store files
-task,email@address.com		A magic word which causes email creation to happen
+JSON structure for text file creation. Options are, keep the source audio file or not
+, prepend a time stamp in the form of 2024-01-07 21:04 to the text, and to append to a
+specific file - if not stated then the file will be the audiofile with .md file ending.
 
+default describes the minimal requirement JSON structure requirement
+
+```json
+{
+    "default": { "keepaudiofile": "path/to/folder", "transcript": "path/to/folder" }, 
+    "magic word": { "keepaudiofile": "path/to/folder", "transcript": "path/to/folder", "filename":"filename_to_append_transcripts_to" },
+    "magic word": { "keepaudiofile": "path/to/folder", "transcript": "path/to/folder", "filename":"filename_to_append_transcripts_to", "timestamp": true },
+}
+```
+
+### email definition (expets config.json)
+
+required parameters and valid values:
+- keepaudiofile: true or false (if true, file is put as a message attachment, if false file is destroyed)
+- email: valid email address the receiver
+- transcript subject or body (the transcripted text will place in this part of the email)
+
+example:
+
+```json
+{ "magic word": {"keepaudiofile": true, "email": "target@email.me", "transcript": "subject"}}
+```

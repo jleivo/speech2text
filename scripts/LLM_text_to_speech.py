@@ -32,9 +32,11 @@ class transciber:
     smtp_port = ""
     sender_email = ""
     config = {}
+    debuginfo = False
 
-    def __init__(self,model_size = "medium"):
+    def __init__(self,model_size = "medium", debuginfo = False):
         self.model = whisper.load_model(model_size, download_root = self.model_location )
+        self.debuginfo = debuginfo
 
     def transcribe(self,speech_file):
         result = self.model.transcribe(speech_file)
@@ -82,10 +84,27 @@ class transciber:
 
         self.config = config
 
+        if self.debuginfo:
+            print(f"Config: {self.config}")
+            print(f"Sender email: {self.sender_email}")
+            print(f"SMTP server: {self.smtp_server}")
+            print(f"SMTP port: {self.smtp_port}")
+            print(f"Model location: {self.model_location}")
+            print(f"CPU FP: {self.cpu_fp}")
+            print(f"Debuginfo: {self.debuginfo}")
+
     def handle_output(self,text,folder,filename):
 
         # magic word is first word from the variable text
-        magic_word = text.split()[-1]
+        magic_word = text.split()[0]
+        # remove punctions and capitalization from the magic word
+        magic_word = magic_word.strip('.,!?;:()[]"\'')
+        magic_word = magic_word.lower()
+        if self.debuginfo:
+            print(f"Text: {text}")
+            print(f"Folder: {folder}")
+            print(f"Filename: {filename}")
+            print(f"Magic word: {magic_word}")
         # check if magic word is in the dictionary config
         if magic_word in self.config:
             # get the configurion from the dictionary
@@ -93,6 +112,29 @@ class transciber:
         else:
             # if magic word is not in the dictionary, get the default
             details = self.config['default']
+        if 'email' in details:
+            # email the text to the email address specified in details['email']
+            # if the email server configuration is not defined, exit out
+            if self.smtp_server == "" or self.smtp_port == "" or self.sender_email == "":
+                print("Error: email configuration not defined")
+                sys.exit(1)
+            if details['transcript'] == 'body':
+                body = text
+                subject = "Whisper AI transcript"
+            else: 
+                if details['transcript'] == 'subject':
+                    subject = text
+                    body = "."
+            if details['keepaudiofile']:
+                self.send_email(receiver_email = details['email'], subject = subject, \
+                            message = body, attachment = folder + "/" + filename)
+            else:
+                self.send_email(receiver_email = details['email'], subject = subject, \
+                            message = body)
+            os.remove(folder + "/" + filename)
+            return
+            
+            
         if not 'filename' in details:
             # filename is the same as the original filename, but the file type
             # is changed to md
@@ -127,7 +169,7 @@ class transciber:
                 
             f.close()
 
-    def send_email(self, sender_email, receiver_email, subject, message, attachment=None):
+    def send_email(self, receiver_email, subject, message, attachment=None):
         msg = MIMEMultipart()
         msg['From'] = self.sender_email
         msg['To'] = receiver_email
@@ -147,8 +189,8 @@ class transciber:
 
             msg.attach(part)
 
-        server = smtplib.SMTP('your_smtp_server_address', 25)
-        server.sendmail(sender_email, receiver_email, msg.as_string())
+        server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+        server.sendmail(self.sender_email, receiver_email, msg.as_string())
         server.quit()
     
 
@@ -162,21 +204,18 @@ def init(arguments):
                         default = "medium")
     parser.add_argument('-f','--folder', required = False, help = 'Folder to \
                         monitor', default = "/audio")
+    parser.add_argument('-d','--debug', default = False, action="store_true", \
+                        help = 'Enable Debug mode')
     
     # verify that /targets.json exists
     if not os.path.isfile('/targets.json'):
         raise Exception("File /targets.json not found")
-
     try:
         results = parser.parse_args()
     except argparse.ArgumentError as e:
         raise(e)
     return results
 
-
-# Check what to do with the given text, based on the first word
-# in the text. It is matched against the dictionary and actions are taken
-# accordingly
 
 ################################### LOGIC #####################################
 
@@ -188,11 +227,11 @@ def main(arguments):
         sys.exit(1)
 
     print("Starting whisper AI with model {}".format(args.model))
-    AI = transciber(args.model)
+    AI = transciber(args.model,args.debug)
     print("Whisper AI started")
 
     print("Loading config file")
-    # Config file is always the /targets.json
+    # Config files are always the /targets.json and /config.json
     AI.load_config()
     print("Config file(s) loaded")
 
