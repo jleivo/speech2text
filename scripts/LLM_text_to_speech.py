@@ -52,7 +52,7 @@ class transciber:
                 try:
                     emaildata = json.load(f)
                 except Exception as e:
-                    print("Error loading config file")
+                    print("Error loading email config file")
                     print(e)
                     sys.exit(1)
             # Set internal variables
@@ -70,7 +70,7 @@ class transciber:
             try:
                 config = json.load(f)
             except Exception as e:
-                print("Error loading config file")
+                print("Error loading targets definition file")
                 print(e)
                 sys.exit(1)
         
@@ -93,13 +93,25 @@ class transciber:
             print(f"CPU FP: {self.cpu_fp}")
             print(f"Debuginfo: {self.debuginfo}")
 
-    def handle_output(self,text,folder,filename):
-
-        # magic word is first word from the variable text
+    def get_magic_word(self,text):
+        """
+            Function to get the magic word for evaluation.
+            Everything that is not alphabet characters is removed and 
+            lowercased.
+        """
         magic_word = text.split()[0]
-        # remove punctions and capitalization from the magic word
         magic_word = magic_word.strip('.,!?;:()[]"\'')
         magic_word = magic_word.lower()
+
+        if self.debuginfo:
+            print(f"DEBUG: Magic word: {magic_word}")
+        
+        return(magic_word)
+
+    def handle_output(self,text,folder,filename):
+
+        magic_word = self.get_magic_word(text)
+
         if self.debuginfo:
             print(f"Text: {text}")
             print(f"Folder: {folder}")
