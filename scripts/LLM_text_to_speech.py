@@ -93,7 +93,7 @@ class transciber:
             print(f"CPU FP: {self.cpu_fp}")
             print(f"Debuginfo: {self.debuginfo}")
 
-    def get_magic_word(self,text):
+    def __get_magic_word(self,text):
         """
             Function to get the magic word for evaluation.
             Everything that is not alphabet characters is removed and 
@@ -108,22 +108,40 @@ class transciber:
         
         return(magic_word)
 
-    def handle_output(self,text,folder,filename):
-
-        magic_word = self.get_magic_word(text)
-
-        if self.debuginfo:
-            print(f"Text: {text}")
-            print(f"Folder: {folder}")
-            print(f"Filename: {filename}")
-            print(f"Magic word: {magic_word}")
-        # check if magic word is in the dictionary config
+    def __get_targeting_details(self,magic_word):
+        """
+            Function to get the targeting details for the magic word.
+            If the magic word is not in the dictionary, the default 
+            configuration is returned.
+            2024-01-08 Missing sanity checking
+        """
         if magic_word in self.config:
             # get the configurion from the dictionary
             details = self.config[magic_word]
         else:
             # if magic word is not in the dictionary, get the default
             details = self.config['default']
+        
+        if self.debuginfo:
+            print(f"DEBUG: Targeting details: {details}")
+        
+        return(details)
+
+    def handle_output(self,text,folder,filename):
+        """
+            Public function to handle the output of the transciption.
+            - First checked detail is the email definition, if that exists
+              everything is handled as email and sent away.
+        """
+
+        if self.debuginfo:
+            print(f"DEBUG: Folder is {folder} and the target filename \
+                  is {filename}")
+            print(f"DEBUG: {text}")
+
+        magic_word = self.__get_magic_word(text)
+        details = self.__get_targeting_details(magic_word)
+
         if 'email' in details:
             # email the text to the email address specified in details['email']
             # if the email server configuration is not defined, exit out
