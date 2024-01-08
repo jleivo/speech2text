@@ -127,11 +127,51 @@ class transciber:
         
         return(details)
 
+    def __create_email_message(self,text,details,folder,filename):
+        """
+            Wrapper function for the send email function to massage the data
+            based on details definitions.
+            if the transcript doesn't have correct definitions, the message will
+            be in the body and WARNING message is printed
+        """
+        if details['transcript'] == 'subject':
+            subject = text
+            body = "."
+        else: 
+            if not details['transcript'] == 'body':
+                print(f"WARNING: Faulty transcript definition")
+            body = text
+            subject = "Whisper AI transcript"
+        
+        if self.debuginfo:
+            print(f"DEBUG: Sending email to {details['email']}")
+            print(f"DEBUG: Subject: {subject}")
+            print(f"DEBUG: Body: {body}")
+    
+        if details['keepaudiofile']:
+            if self.debuginfo:
+                print(f"DEBUG: Attaching the audio file to the email.")
+            self.__send_email(receiver_email = details['email'], \
+                            subject = subject, message = body, \
+                                attachment = folder + "/" + filename)
+        else:
+            self.__send_email(receiver_email = details['email'], \
+                            subject = subject, message = body)
+        if self.debuginfo:
+            print(f"DEBUG: Email most likely sent.")
+            print(f"DEBUG: removing audiofile")
+        os.remove(folder + "/" + filename)
+
+        return
+
     def handle_output(self,text,folder,filename):
         """
             Public function to handle the output of the transciption.
-            - First checked detail is the email definition, if that exists
-              everything is handled as email and sent away.
+
+            First checked detail is the email definition, if that exists
+            everything is handled as email and sent away. However, if the 
+            email server definition is faulty the note is handled as indicated
+            by the default configuration
         """
 
         if self.debuginfo:
@@ -143,26 +183,12 @@ class transciber:
         details = self.__get_targeting_details(magic_word)
 
         if 'email' in details:
-            # email the text to the email address specified in details['email']
-            # if the email server configuration is not defined, exit out
             if self.smtp_server == "" or self.smtp_port == "" or self.sender_email == "":
-                print("Error: email configuration not defined")
-                sys.exit(1)
-            if details['transcript'] == 'body':
-                body = text
-                subject = "Whisper AI transcript"
-            else: 
-                if details['transcript'] == 'subject':
-                    subject = text
-                    body = "."
-            if details['keepaudiofile']:
-                self.send_email(receiver_email = details['email'], subject = subject, \
-                            message = body, attachment = folder + "/" + filename)
+                print(f"WARNING: email configuration faulty!")
+                details = self.__get_targeting_details("default")
             else:
-                self.send_email(receiver_email = details['email'], subject = subject, \
-                            message = body)
-            os.remove(folder + "/" + filename)
-            return
+                self.__create_email_message(text,details,folder,filename)
+                return
             
             
         if not 'filename' in details:
@@ -200,7 +226,7 @@ class transciber:
                 
             f.close()
 
-    def send_email(self, receiver_email, subject, message, attachment=None):
+    def __send_email(self, receiver_email, subject, message, attachment=None):
 
         msg = MIMEMultipart()
         msg['From'] = self.sender_email
