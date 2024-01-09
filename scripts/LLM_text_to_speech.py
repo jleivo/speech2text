@@ -194,10 +194,12 @@ class transciber:
         if not 'filename' in details:
             # filename is the same as the original filename, but the file type
             # is changed to md
-            details['filename'] = filename.rsplit('.', 0)[0] + ".md"
+            target_filename = filename.rsplit('.', 0)[0] + ".md"
+        else:
+            target_filename = details['filename']
         # Append the text to the file located in details['transcript'] folder 
         # with the filename details['filename']. Create file, if it doesn't exist
-        with open("/target/" + details['transcript'] + "/" + details['filename'], 'a') as f:
+        with open("/target/" + details['transcript'] + "/" + target_filename, 'a') as f:
             # check if details require timestamp (timestamp: True) and prepend
             # timestamp to the text in the format of YYYY-MM-DD HH:MM:SS
             if 'timestamp' in details and details['timestamp']:
