@@ -52,7 +52,7 @@ class transciber:
                 try:
                     emaildata = json.load(f)
                 except Exception as e:
-                    print("Error loading config file")
+                    print("Error loading email config file")
                     print(e)
                     sys.exit(1)
             # Set internal variables
@@ -70,7 +70,7 @@ class transciber:
             try:
                 config = json.load(f)
             except Exception as e:
-                print("Error loading config file")
+                print("Error loading targets definition file")
                 print(e)
                 sys.exit(1)
         
@@ -93,55 +93,113 @@ class transciber:
             print(f"CPU FP: {self.cpu_fp}")
             print(f"Debuginfo: {self.debuginfo}")
 
-    def handle_output(self,text,folder,filename):
-
-        # magic word is first word from the variable text
+    def __get_magic_word(self,text):
+        """
+            Function to get the magic word for evaluation.
+            Everything that is not alphabet characters is removed and 
+            lowercased.
+        """
         magic_word = text.split()[0]
-        # remove punctions and capitalization from the magic word
         magic_word = magic_word.strip('.,!?;:()[]"\'')
         magic_word = magic_word.lower()
+
         if self.debuginfo:
-            print(f"Text: {text}")
-            print(f"Folder: {folder}")
-            print(f"Filename: {filename}")
-            print(f"Magic word: {magic_word}")
-        # check if magic word is in the dictionary config
+            print(f"DEBUG: Magic word: {magic_word}")
+        
+        return(magic_word)
+
+    def __get_targeting_details(self,magic_word):
+        """
+            Function to get the targeting details for the magic word.
+            If the magic word is not in the dictionary, the default 
+            configuration is returned.
+            2024-01-08 Missing sanity checking
+        """
         if magic_word in self.config:
             # get the configurion from the dictionary
             details = self.config[magic_word]
         else:
             # if magic word is not in the dictionary, get the default
             details = self.config['default']
+        
+        if self.debuginfo:
+            print(f"DEBUG: Targeting details: {details}")
+        
+        return(details)
+
+    def __create_email_message(self,text,details,folder,filename):
+        """
+            Wrapper function for the send email function to massage the data
+            based on details definitions.
+            if the transcript doesn't have correct definitions, the message will
+            be in the body and WARNING message is printed
+        """
+        if details['transcript'] == 'subject':
+            subject = text
+            body = "."
+        else: 
+            if not details['transcript'] == 'body':
+                print(f"WARNING: Faulty transcript definition")
+            body = text
+            subject = "Whisper AI transcript"
+        
+        if self.debuginfo:
+            print(f"DEBUG: Sending email to {details['email']}")
+            print(f"DEBUG: Subject: {subject}")
+            print(f"DEBUG: Body: {body}")
+    
+        if details['keepaudiofile']:
+            if self.debuginfo:
+                print(f"DEBUG: Attaching the audio file to the email.")
+            self.__send_email(receiver_email = details['email'], \
+                            subject = subject, message = body, \
+                                attachment = folder + "/" + filename)
+        else:
+            self.__send_email(receiver_email = details['email'], \
+                            subject = subject, message = body)
+        if self.debuginfo:
+            print(f"DEBUG: Email most likely sent.")
+            print(f"DEBUG: removing audiofile")
+        os.remove(folder + "/" + filename)
+
+        return
+
+    def handle_output(self,text,folder,filename):
+        """
+            Public function to handle the output of the transciption.
+
+            First checked detail is the email definition, if that exists
+            everything is handled as email and sent away. However, if the 
+            email server definition is faulty the note is handled as indicated
+            by the default configuration
+        """
+
+        if self.debuginfo:
+            print(f"DEBUG: Folder is {folder} and the target filename \
+                  is {filename}")
+            print(f"DEBUG: {text}")
+
+        magic_word = self.__get_magic_word(text)
+        details = self.__get_targeting_details(magic_word)
+
         if 'email' in details:
-            # email the text to the email address specified in details['email']
-            # if the email server configuration is not defined, exit out
             if self.smtp_server == "" or self.smtp_port == "" or self.sender_email == "":
-                print("Error: email configuration not defined")
-                sys.exit(1)
-            if details['transcript'] == 'body':
-                body = text
-                subject = "Whisper AI transcript"
-            else: 
-                if details['transcript'] == 'subject':
-                    subject = text
-                    body = "."
-            if details['keepaudiofile']:
-                self.send_email(receiver_email = details['email'], subject = subject, \
-                            message = body, attachment = folder + "/" + filename)
+                print(f"WARNING: email configuration faulty!")
+                details = self.__get_targeting_details("default")
             else:
-                self.send_email(receiver_email = details['email'], subject = subject, \
-                            message = body)
-            os.remove(folder + "/" + filename)
-            return
+                self.__create_email_message(text,details,folder,filename)
+                return
             
             
         if not 'filename' in details:
             # filename is the same as the original filename, but the file type
             # is changed to md
-            details['filename'] = filename.rsplit('.', 0)[0] + ".md"
+            target_filename = filename.rsplit('.', 0)[0] + ".md"
+        else:
+            target_filename = details['filename']
         # Append the text to the file located in details['transcript'] folder 
         # with the filename details['filename']. Create file, if it doesn't exist
-        with open("/target/" + details['transcript'] + "/" + details['filename'], 'a') as f:
+        with open("/target/" + details['transcript'] + "/" + target_filename, 'a') as f:
             # check if details require timestamp (timestamp: True) and prepend
             # timestamp to the text in the format of YYYY-MM-DD HH:MM:SS
             if 'timestamp' in details and details['timestamp']:
@@ -170,7 +228,7 @@ class transciber:
                 
             f.close()
 
-    def send_email(self, receiver_email, subject, message, attachment=None):
+    def __send_email(self, receiver_email, subject, message, attachment=None):
 
         msg = MIMEMultipart()
         msg['From'] = self.sender_email
