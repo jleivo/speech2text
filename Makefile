@@ -46,7 +46,7 @@ test_push:
 	docker push \
 	$(REPO_NAME)/$(IMAGE_NAME)\:${BUILD_NUMBER}
 
-	docker push \	
+	docker push \
 	$(REPO_NAME)/$(IMAGE_NAME)\:test
 
 
