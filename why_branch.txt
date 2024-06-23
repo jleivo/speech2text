@@ -1,0 +1,4 @@
+Aim of this branch is to make my development work faster
+
+1) own docker repo to move containers faster
+2) workflow to push new containers easier

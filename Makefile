@@ -1,9 +1,4 @@
-# Black magic, ref: https://pawamoy.github.io/posts/pass-makefile-args-as-typed-in-command-line/
-# function that parses parameters from command line and allows us to get the content
-args = $(foreach a,$($(subst -,_,$1)_args),$(if $(value $a),$a="$($a)"))
-args_content = $(foreach a,$($(subst -,_,$1)_args),$(if $(value $a),"$($a)"))
-
-# Black magic, part two, the reconing https://moonmilo1108.medium.com/bump-or-automate-your-version-number-in-makefile-9da466c857d9
+# Black magic, https://moonmilo1108.medium.com/bump-or-automate-your-version-number-in-makefile-9da466c857d9
 # Automatic minor version numbering
 
 ifeq ($(VERSION),)
@@ -26,44 +21,51 @@ endif
 # Normal stuff..
 SHELL := /bin/bash
 IMAGE_NAME := $(shell basename ${PWD})
-
-# this is the list of parameters that given function will parse
-commit_args = message
-merge_args = message
-major_args = message
+REPO_NAME := "docker.intra.leivo"
+BUILD_NUMBER := $(shell git rev-parse --short HEAD)
 
 build:
 	docker build \
 	--tag ${IMAGE_NAME}\:${CUR_VERSION} \
 	--tag ${IMAGE_NAME}\:latest \.
 
+test_build:
+	docker build \
+	--tag ${IMAGE_NAME}\:${BUILD_NUMBER} \
+	--tag ${IMAGE_NAME}\:test \.
+
+test_push:
+	docker tag \
+	${IMAGE_NAME}\:${BUILD_NUMBER} \
+	$(REPO_NAME)/$(IMAGE_NAME)\:${BUILD_NUMBER}
+
+	docker tag \
+	${IMAGE_NAME}\:${BUILD_NUMBER} \
+	$(REPO_NAME)/$(IMAGE_NAME)\:test
+
+	docker push \
+	$(REPO_NAME)/$(IMAGE_NAME)\:${BUILD_NUMBER}
+
+	docker push \	
+	$(REPO_NAME)/$(IMAGE_NAME)\:test
+
+
 clean:
 	docker image rm "${IMAGE_NAME}"\:"${CUR_VERSION}"
-	docker image rm "${IMAGE_NAME}"\:latest
+	docker image rm "${IMAGE_NAME}"\:test
 
-commit:
-	@echo "Commiting version $(VERSION)"
-	git commit -a -m \"$(call args_content,$@)\"
+release:
+	@echo "Creating version $(VERSION)"
 	git tag ${VERSION}
 	git push
 	git push --tags
 
-commit_change:
-	@echo "modify image"
-	git add . 
-	git commit -m "modify image"
-	git push
-
-merge:
-	@echo "Commiting version $(MERGE_VERSION)"
-	git commit -a -m \"$(call args_content,$@)\"
+minor_release:
 	git tag ${MERGE_VERSION}
 	git push
 	git push --tags
 
-major:
-	@echo "Commiting version $(MAJOR_VERSION)"
-	git commit -a -m \"$(call args_content,$@)\"
+major_release:
 	git tag ${MAJOR_VERSION}
 	git push
 	git push --tags
