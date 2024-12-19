@@ -12,6 +12,8 @@ make test_push # pushes to repo
 
 once ready with the work, create release X.Y.Z
 
+```bash
 make release # pushes Z one up
 make minor_release # pushes Y one up
 make major_release # pushes X one up
+```
