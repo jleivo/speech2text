@@ -1,5 +1,6 @@
 targets.json
 personal-compose.yml
-config.json
+email.json
 *.swp
 scripts/__pycache__
+__pycache__

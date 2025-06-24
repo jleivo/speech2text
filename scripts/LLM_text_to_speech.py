@@ -43,11 +43,11 @@ class transciber:
         return(result["text"])
 
     def load_config(self):
-        # check if email server configuration is defined in /config.json
-        if not os.path.isfile('/config.json'):
+        # check if email server configuration is defined in /email.json
+        if not os.path.isfile('/email.json'):
             print("No email configuration")
         else:
-            with open('/config.json') as f:
+            with open('/email.json') as f:
                 # try to load config file, exit out if not valid json
                 try:
                     emaildata = json.load(f)
@@ -293,7 +293,7 @@ def main(arguments):
     print("Whisper AI started")
 
     print("Loading config file")
-    # Config files are always the /targets.json and /config.json
+    # Config files are always the /targets.json and /email.json
     AI.load_config()
     print("Config file(s) loaded")
 
