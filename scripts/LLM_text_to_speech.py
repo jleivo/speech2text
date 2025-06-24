@@ -36,7 +36,7 @@ class transciber:
     debuginfo = False
 
     def __init__(self,model_size = "turbo", debuginfo = False):
-        self.model = whisper.load_model(model_size, download_root = self.model_location )
+        self.model = whisper.load_model(model_size, download_root = self.model_location, device="cpu" )
         self.debuginfo = debuginfo
 
     def transcribe(self,speech_file):
