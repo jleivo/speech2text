@@ -279,12 +279,14 @@ class transciber:
 def init(arguments):
     parser = argparse.ArgumentParser(arguments, description='Speech-to-Text tool')
     parser.add_argument('-m','--model', required = False, help = 'Whisper AI \
-                        model size to run: small, medium(default), large',
-                        default = "medium")
+                        model size to run: small, medium, large, turbo(default)',
+                        default = "turbo")
     parser.add_argument('-f','--folder', required = False, help = 'Folder to \
                         monitor', default = "/audio")
     parser.add_argument('-d','--debug', default = False, action="store_true", \
                         help = 'Enable Debug mode')
+    parser.add_argument('--test', default=False, action="store_true", \
+                        help = 'Does not monitor the directory' )
     
     # verify that /targets.json exists
     if not os.path.isfile('/targets.json'):
@@ -325,8 +327,10 @@ def main(arguments):
             text = AI.transcribe(args.folder + "/" + filename)
             print("Transcribed text from file " + filename)
             AI.handle_output(text,args.folder,filename)
-            break
-        time.sleep(1)
+        if args.test:
+           sys.exit(0) 
+        else:
+            time.sleep(1)
 
 if __name__ == "__main__":
     main(sys.argv)
