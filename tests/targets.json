@@ -1,0 +1,5 @@
+{
+    "default": { "keepaudiofile": ".", "transcript": "." }, 
+    "kone": { "keepaudiofile": ".", "transcript": ".", "filename":"kone.txt" },
+    "ruokailu": { "keepaudiofile": false, "transcript": ".", "filename":"ruokailu.txt", "timestamp": true }
+}
