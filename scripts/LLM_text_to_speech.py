@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 #
 # Author: Juha Leivo
-# Version: 1
-# Date: 2024-01-03
+# Version: 2
+# Date: 2025-06-24
 #
 # History
 #   1 - 2024-01-03, initial write
+#   2 - 2025-06-24, Jules: remove the magic word from output
+#                   Juha: change model to turbo
 
 import whisper
 import argparse
@@ -14,7 +16,6 @@ import time
 import os
 import json
 import shutil
-# email joy
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -34,7 +35,7 @@ class transciber:
     config = {}
     debuginfo = False
 
-    def __init__(self,model_size = "medium", debuginfo = False):
+    def __init__(self,model_size = "turbo", debuginfo = False):
         self.model = whisper.load_model(model_size, download_root = self.model_location )
         self.debuginfo = debuginfo
 
