@@ -179,8 +179,24 @@ class transciber:
                   is {filename}")
             print(f"DEBUG: {text}")
 
-        magic_word = self.__get_magic_word(text)
-        details = self.__get_targeting_details(magic_word)
+        potential_magic_word = self.__get_magic_word(text)
+        details = self.__get_targeting_details(potential_magic_word)
+
+        # Remove the magic word from the text only if it's a configured one
+        # and not the 'default' configuration.
+        # We use potential_magic_word for the check, as it's the actual first word found.
+        if potential_magic_word in self.config and potential_magic_word != 'default':
+            # Need to be careful if the original text didn't exactly start with potential_magic_word
+            # due to __get_magic_word's transformations (lower, strip punctuation).
+            # So, we re-evaluate the part to remove based on the original text.
+            # A simple way is to check if the original text, after stripping and lowercasing its first word,
+            # matches the potential_magic_word.
+
+            first_word_original_text = text.split(maxsplit=1)[0]
+            # Compare the processed first word of the original text with the potential_magic_word
+            if self.__get_magic_word(first_word_original_text) == potential_magic_word:
+                 # Remove the original first word (which corresponds to the magic word)
+                text = text[len(first_word_original_text):].lstrip()
 
         if 'email' in details:
             if self.smtp_server == "" or self.smtp_port == "" or self.sender_email == "":
