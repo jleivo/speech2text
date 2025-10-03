@@ -14,6 +14,7 @@
 import os
 import tempfile
 import pytest
+from unittest.mock import patch, MagicMock
 from src.transcribe import transcribe_audio
 
 def test_transcribe_audio():
@@ -23,15 +24,13 @@ def test_transcribe_audio():
         file_path = tmp.name
 
     # Mock the actual transcription to avoid needing OpenAI Whisper
-    import src.transcribe
-    original_transcribe_audio = src.transcribe.transcribe_audio
-    src.transcribe.transcribe_audio = lambda x: "This is a mock transcription"
+    mock_model = MagicMock()
+    mock_model.transcribe.return_value = {'text': 'This is a test transcription'}
 
-    result = transcribe_audio(file_path)
+    with patch('src.transcribe.whisper.load_model', return_value=mock_model):
+        result = transcribe_audio(file_path)
 
-    assert result == "This is a test transcription of the audio file.", "transcribe_audio should return the expected result"
-    # Restore the original function to avoid affecting other tests
-    src.transcribe.transcribe_audio = original_transcribe_audio
+        assert result == "This is a test transcription", "transcribe_audio should return the expected result"
 
     # Clean up
     os.unlink(file_path)
