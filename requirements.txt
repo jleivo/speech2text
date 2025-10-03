@@ -1,8 +1,9 @@
 
-openai-whisper
-watchdog
-pytest
-jsonschema
+# Core dependencies
+watchdog==4.0.0
+pytest==8.4.2
+jsonschema==4.23.0
+
+# Whisper model and transcription
 whisper==1.1.10
-openai-whisper==20250625
 torch==2.8.0
