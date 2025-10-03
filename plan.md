@@ -21,26 +21,52 @@
 - Create a function that takes an audio file path as input and returns the transcribed text
 - Use the `openai-whisper` package for transcription
 
-### 2.3 Magic Word Analysis
-- Implement a function that analyzes the first word of the transcribed text
-- Define a set of "magic words" that determine what action to take with the text:
-  - `FILE`: Create a new file in a user-defined location
-  - `APPEND`: Append content to an existing file
-  - `EMAIL`: Send content as an email
+### 2.3 Magic Word Analysis and Actions
+- Implement a function that analyzes the first word of the transcribed text for magic words
+- Users define their own magic words in the configuration file, with each magic word associated with:
+  - A predefined action type (FILE, APPEND, EMAIL)
+  - Action-specific parameters
 
-### 2.4 Action Implementation
-- Implement functions for each magic word action:
-  - Create a new file with the transcribed text
-  - Append the transcribed text to an existing file
-  - Send the transcribed text via email (using smtplib or similar)
+#### Example Configuration Entries:
+
+1. Magic Word: `KONE`
+   - Action: `EMAIL`
+   - Parameters:
+     - to: juha@leivo.org
+
+2. Magic Word: `food`
+   - Action: `APPEND`
+   - Parameters:
+     - to: files/Resources/fooddiary.md
+
+#### Predefined Actions and Their Parameters:
+
+- `FILE`: Create a new file with the transcribed text
+  - Required parameter: `to` (file path)
+
+- `APPEND`: Append the transcribed text to an existing file
+  - Required parameter: `to` (file path)
+
+- `EMAIL`: Send the transcribed text via email
+  - Required parameters:
+    - `to` (email address)
+    - `subject` (optional, default: "Transcription")
+    - `from` (optional, if not configured globally)
 
 ## 3. Configuration Management
 - Create a JSON configuration schema that includes:
-  - Monitored folder path
-  - Magic words and their corresponding actions
-  - Action-specific settings:
-    - Output file location for FILE action
-    - Email settings for EMAIL action
+  - Monitored folder path (required)
+  - Global email settings (optional):
+    - from: default sender email address
+    - smtp_server: SMTP server address
+    - smtp_port: SMTP port number
+    - smtp_username: SMTP username
+    - smtp_password: SMTP password
+  - Magic words configuration:
+    - Each magic word has an associated action and parameters:
+      - action: one of FILE, APPEND, EMAIL (required)
+      - to: destination path or email address (required)
+      - subject: optional parameter for EMAIL action
 
 ### 3.1 Configuration Validation
 - Implement validation using jsonschema to ensure all required fields are present
