@@ -8,6 +8,7 @@
   - openai-whisper for speech-to-text conversion
   - watchdog for folder monitoring
   - pytest for testing
+  - json schema validation (jsonschema)
   - other utilities (email sending, file operations)
 
 ## 2. Core Functionality Development
@@ -33,24 +34,37 @@
   - Append the transcribed text to an existing file
   - Send the transcribed text via email (using smtplib or similar)
 
-## 3. Testing
+## 3. Configuration Management
+- Create a JSON configuration schema that includes:
+  - Monitored folder path
+  - Magic words and their corresponding actions
+  - Action-specific settings:
+    - Output file location for FILE action
+    - Email settings for EMAIL action
+
+### 3.1 Configuration Validation
+- Implement validation using jsonschema to ensure all required fields are present
+
+### 3.2 Interactive Configuration Script
+- Create a script that allows users to interactively add or update configuration entries:
+  - Validate user inputs before adding them to the configuration file
+  - Ensure all required fields are provided for each action type
+
+## 4. Testing
 - Write pytest tests for all core functionality:
   - Folder monitoring service
   - Speech-to-text conversion function
   - Magic word analysis function
   - Action implementation functions
-
-## 4. Configuration and User Interface
-- Create a configuration file or user interface to set up:
-  - Monitored folder path
-  - Output file location (for FILE action)
-  - Email settings (for EMAIL action)
+  - Configuration validation and loading
+  - Interactive configuration script
 
 ## 5. Documentation
 - Write documentation for:
   - Installation and setup
   - Usage instructions
-  - Configuration options
+  - Configuration options (with examples)
+  - JSON schema reference
 
 ## 6. Packaging and Distribution
 - Package the application for distribution
