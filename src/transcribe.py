@@ -10,7 +10,7 @@ def transcribe_audio(file_path):
     Transcribe an audio file to text.
 
     Args:
-        file_path (str): Path to the audio file
+        file_path (str): Path to the audio file. Supported formats: .wav, .m4a
 
     Returns:
         str: The transcribed text
