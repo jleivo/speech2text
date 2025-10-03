@@ -29,3 +29,22 @@ The purpose of this repository is to develop a Python-based speech-to-text appli
   - `config.py`: Configuration loading and validation
 - `tests/` (future): Pytest test suite
 
+## Git Commit Message Convention
+Commits should follow this format:
+1. Header (max 50 characters) starting with one of the following "magic words":
+   - Feat: new feature
+   - Fix: bug fix
+   - Docs: documentation changes
+   - Style: formatting or style change
+   - Perf: performance improvement
+   - Test: test-related changes
+2. Empty line
+3. Content: brief description of the changes
+
+Example:
+```
+Feat: add folder monitoring service
+
+Implemented a service that monitors a user-defined folder for new audio files.
+```
+
