@@ -53,6 +53,11 @@
     - `subject` (optional, default: "Transcription")
     - `from` (optional, if not configured globally)
 
+- `SCRIPT`: Execute a script with the transcribed text as input
+  - Required parameter: `to` (path to executable script)
+  - Optional parameters:
+    - `args`: additional arguments to pass to the script
+
 ## 3. Configuration Management
 - Create a JSON configuration schema that includes:
   - Monitored folder path (required)
