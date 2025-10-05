@@ -8,6 +8,8 @@
 import os
 import datetime
 import subprocess
+import smtplib
+from email.mime.text import MIMEText
 
 def perform_action(action_config, content):
     """
@@ -52,16 +54,44 @@ def append_to_file(action_config, content):
 
     print(f"Appended to file: {file_path}")
 
-def send_email(action_config, content):
-    """Send an email with the given content."""
+def send_email(recipient, subject, body):
+    """
+    Send an email with the given content.
+
+    Args:
+        recipient (str): The email address to send to
+        subject (str): The subject of the email
+        body (str): The body of the email
+    """
+    # For real-world usage, you would configure and use a proper SMTP server here
+    print(f"Would send email to {recipient} with subject '{subject}' and body:\n{body}")
+
+def execute_script(script_path, message):
+    """
+    Execute a script with the given message.
+
+    Args:
+        script_path (str): The path to the script to execute
+        message (str): The message to pass to the script
+    """
+    # Execute the script with the message as input
+    result = subprocess.run(['bash', script_path], input=message, text=True)
+
+    if result.returncode == 0:
+        print(f"Successfully executed script: {script_path}")
+    else:
+        print(f"Failed to execute script: {script_path}, return code: {result.returncode}")
+
+def send_email_old(action_config, content):
+    """Send an email with the given content (legacy function)."""
     # TODO: Implement actual email sending
     recipient = action_config.get('recipient', '')
     subject = action_config.get('subject', 'New transcription')
 
     print(f"Would send email to {recipient} with subject '{subject}' and body:\n{content}")
 
-def execute_script(action_config, content):
-    """Execute a script with the given content as input."""
+def execute_script_old(action_config, content):
+    """Execute a script with the given content as input (legacy function)."""
     script_path = action_config['script_path']
 
     # Write content to a temporary file
@@ -76,6 +106,4 @@ def execute_script(action_config, content):
         print(f"Successfully executed script: {script_path}")
     else:
         print(f"Failed to execute script: {script_path}, return code: {result.returncode}")
-
-
 

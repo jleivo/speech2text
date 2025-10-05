@@ -16,6 +16,19 @@ CONFIG_SCHEMA = {
     "type": "object",
     "properties": {
         "folder_to_watch": {"type": "string"},
+        "failed": {
+            "type": "object",
+            "properties": {
+                "to": {"type": "string"},
+                "inform": {"type": "string"},
+                "script": {"type": "string"}
+            },
+            "required": ["to"],
+            "oneOf": [
+                {"required": ["inform"]},
+                {"required": ["script"]}
+            ]
+        },
         "magic_words": {
             "type": "object",
             "patternProperties": {
@@ -56,8 +69,17 @@ def create_default_config(output_dir='../config'):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    failed_dir = output_dir / "failed"
+    failed_dir.mkdir(exist_ok=True)
+
     default_config = {
         "folder_to_watch": str(output_dir / "audio"),
+        "failed": {
+            "to": str(failed_dir),
+            "inform": "admin@example.com",
+            # Uncomment one of the following lines based on preference:
+            # "script": "/path/to/notify_script.sh"
+        },
         "magic_words": {
             "FILE": {
                 "action": "create_file",
