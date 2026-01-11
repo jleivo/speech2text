@@ -1,14 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
 #!/usr/bin/env python3
 
 import os
@@ -58,8 +47,4 @@ def test_main():
             with patch('src.main.Observer'):
                 with patch('builtins.input', return_value='n'):  # Mock user input to skip waiting for files
                     main()
-
-
-
-
 

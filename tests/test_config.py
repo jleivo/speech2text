@@ -1,11 +1,3 @@
-
-
-
-
-
-
-
-
 #!/usr/bin/env python3
 
 import os
@@ -65,7 +57,3 @@ def test_create_default_config():
         # Check that the default config has the expected structure
         assert "folder_to_watch" in config, "Default config should have folder_to_watch"
         assert "magic_words" in config, "Default config should have magic_words"
-
-
-
-

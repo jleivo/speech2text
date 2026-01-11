@@ -1,5 +1,3 @@
-
-
 # Speech2Text Repository Overview
 
 ## Purpose
@@ -22,7 +20,7 @@ The purpose of this repository is to develop a Python-based speech-to-text appli
 - `.openhands/microagents/repo.md`: Repository overview
 - `config/` (future): Configuration files and schemas
 - `scripts/` (future): Helper scripts including interactive config updater
-- `src/` (future): Main application code
+- `src/`: Main application code
   - `monitor.py`: Folder monitoring service
   - `transcribe.py`: Speech-to-text conversion functions
   - `actions.py`: Action implementations for magic words

@@ -1,14 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
 #!/usr/bin/env python3
 
 import os
@@ -34,7 +23,3 @@ def test_update_config():
 
         assert 'folder_to_watch' in config, "Config should have folder_to_watch"
         assert 'magic_words' in config, "Config should have magic_words"
-
-
-
-

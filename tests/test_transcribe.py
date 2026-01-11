@@ -1,14 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
 #!/usr/bin/env python3
 
 import os
@@ -35,6 +24,3 @@ def test_transcribe_audio():
 
     # Clean up
     os.unlink(file_path)
-
-
-

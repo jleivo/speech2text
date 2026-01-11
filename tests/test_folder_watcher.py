@@ -1,11 +1,3 @@
-
-
-
-
-
-
-#!/usr/bin/env python3
-
 import os
 import tempfile
 import pytest
@@ -90,5 +82,3 @@ def test_check_for_magic_words(folder_watcher):
         folder_watcher.check_for_magic_words("This does not contain any magic words")
 
         assert not mock_perform_action.called, "perform_action should not be called when no magic words are found"
-
-

@@ -1,6 +1,3 @@
-
-
-
 # Speech2Text
 
 Speech-to-text application that monitors a folder for new audio files, transcribes them using OpenAI Whisper, and performs actions based on "magic words" in the transcription.
