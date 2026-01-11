@@ -15,7 +15,7 @@ Speech-to-text application that monitors a folder for new audio files, transcrib
 ## Setup
 
 1. Clone this repository
-2. Create and activate a virtual environment: `python -m venv venv`
+2. Create and activate a virtual environment: `python3 -m venv .venv --prompt "speech2text"`
 3. Install dependencies: `pip install -r requirements.txt`
 4. Configure the application by creating a JSON config file in the `config/` directory
 5. Run the application: `python src/main.py`
