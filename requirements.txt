@@ -1,8 +1,6 @@
-
-openai-whisper
 watchdog
 pytest
 jsonschema
-whisper==1.1.10
-openai-whisper==20250625
-torch==2.8.0
+litellm
+openai-whisper
+torch
