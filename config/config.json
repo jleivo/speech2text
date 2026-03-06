@@ -1,0 +1,16 @@
+{
+    "folder_to_watch": "/tmp/audio",
+    "watched_extensions": [".wav", ".mp3", ".flac", ".m4a", ".ogg"],
+    "delete_after_processing": false,
+    "transcription_log": "/tmp/speech2text.log",
+    "backend": "litellm",
+    "model": "whisper-1",
+    "magic_words": {
+        "FILE": {
+            "script_path": "examples/create_note.py"
+        },
+        "APPEND": {
+            "script_path": "examples/append_log.py"
+        }
+    }
+}

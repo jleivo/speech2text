@@ -1,72 +1,113 @@
 # Speech2Text
 
-Speech-to-text application that monitors a folder for new audio files, transcribes them using OpenAI Whisper, and performs actions based on "magic words" in the transcription.
+Watches a folder for audio files, transcribes them using LiteLLM (with local Whisper fallback), and routes the transcription to external scripts based on the first word (magic word).
 
-## Features
+## How It Works
 
-- Monitors a user-defined folder for new audio files
-- Transcribes audio to text using OpenAI Whisper
-- Analyzes transcriptions for magic words that determine actions:
-  - Create a new file with the content
-  - Append content to an existing file
-  - Send content via email
-  - Execute a script with the content as input
+1. Drop an audio file into the watched folder
+2. The tool transcribes it (LiteLLM API or local Whisper)
+3. The first word is matched against configured magic words
+4. The matching script is called with the remaining text as an argument
+5. If no magic word matches, the default action runs (if configured)
+
+Example: saying "File buy groceries" triggers the FILE magic word's script with "buy groceries" as the argument.
 
 ## Setup
 
-1. Clone this repository
-2. Create and activate a virtual environment: `python3 -m venv .venv --prompt "speech2text"`
-3. Install dependencies: `pip install -r requirements.txt`
-4. Configure the application by creating a JSON config file in the `config/` directory
-5. Run the application: `python src/main.py`
+```bash
+python3 -m venv .venv --prompt speech2text
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
 ## Configuration
 
-Create a JSON configuration file in the `config/` directory with the following structure:
+Edit `config/config.json`:
 
 ```json
 {
-  "folder_to_watch": "/path/to/folder",
-  "magic_words": {
-    "FILE": {
-      "action": "create_file",
-      "file_path_template": "/path/to/output/{timestamp}.txt"
+    "folder_to_watch": "/tmp/audio",
+    "watched_extensions": [".wav", ".mp3", ".flac", ".m4a", ".ogg"],
+    "delete_after_processing": false,
+    "transcription_log": "/tmp/speech2text.log",
+    "backend": "litellm",
+    "model": "whisper-1",
+    "default_action": {
+        "script_path": "path/to/default_handler.py"
     },
-    "APPEND": {
-      "action": "append_to_file",
-      "file_path": "/path/to/existing/file.txt"
-    },
-    "EMAIL": {
-      "action": "send_email",
-      "recipient": "user@example.com",
-      "subject": "New transcription"
-    },
-    "SCRIPT": {
-      "action": "execute_script",
-      "script_path": "/path/to/script.py"
+    "magic_words": {
+        "FILE": {
+            "script_path": "examples/create_note.py"
+        }
     }
-  }
 }
 ```
 
-## Development
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `folder_to_watch` | Yes | - | Directory to monitor for audio files |
+| `magic_words` | Yes | - | Map of trigger words to scripts |
+| `watched_extensions` | No | .wav .mp3 .flac .m4a .ogg | Audio file extensions to process |
+| `delete_after_processing` | No | false | Delete audio file after successful processing |
+| `transcription_log` | No | - | Path to JSON-line log file |
+| `backend` | No | litellm | Transcription backend (litellm or local) |
+| `model` | No | whisper-1 | Model name (whisper-1 for LiteLLM, turbo/small/medium/large for local) |
+| `default_action` | No | - | Script to run when no magic word matches |
 
-### Project Structure
+## Writing Action Scripts
 
-- `src/`: Main application code
-- `tests/`: Unit and integration tests
-- `config/`: Configuration files
-- `scripts/`: Example scripts for the SCRIPT action
+Scripts receive the transcribed text (with magic word stripped) as the first argument:
 
-### Running Tests
+```python
+#!/usr/bin/env python3
+import sys
 
-To run the tests, use the following command:
-
-```bash
-pytest tests/
+text = sys.argv[1]  # "buy groceries" (magic word already stripped)
+# Do something with the text...
 ```
 
-## License
+- Exit code 0 = success, non-zero = failure
+- Scripts can be in any language, as long as they're executable
+- See `examples/` for sample scripts
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+## Running
 
+```bash
+python -m src.main
+# or
+python src/main.py
+```
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | API key for LiteLLM backend |
+| `OPENAI_API_BASE` | Custom API base URL for LiteLLM |
+| `LITELLM_BASE_URL` | LiteLLM server URL (for integration tests) |
+| `LITELLM_MODEL` | Model override (for integration tests) |
+
+## Testing
+
+```bash
+# Unit tests
+pytest tests/ --ignore=tests/test_transcribe_integration.py
+
+# Integration tests (requires LiteLLM server)
+pytest tests/test_transcribe_integration.py -v
+```
+
+## Project Structure
+
+```
+src/
+  main.py            # Entry point
+  config.py          # Configuration loading and validation
+  transcribe.py      # Audio transcription (LiteLLM + Whisper)
+  router.py          # Magic word matching and script dispatch
+  folder_watcher.py  # File system monitoring
+  logger.py          # Transcription history logging
+examples/            # Example action scripts
+config/              # Configuration files
+tests/               # Unit and integration tests
+```
