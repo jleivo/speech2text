@@ -4,3 +4,4 @@ jsonschema
 litellm
 openai-whisper
 torch
+requests
