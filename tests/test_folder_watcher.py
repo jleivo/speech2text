@@ -132,3 +132,45 @@ def test_handles_transcription_error(mock_wait, mock_transcribe, mock_route):
     handler.process_audio_file("/tmp/audio/test.wav")
 
     mock_route.assert_not_called()
+
+
+def test_on_moved_detects_syncthing_files():
+    """Files synced via Syncthing (rename pattern) are detected."""
+    handler = FolderWatcherHandler(_make_config())
+    handler.process_audio_file = MagicMock()
+
+    event = MagicMock()
+    event.is_directory = False
+    event.src_path = "/tmp/audio/.syncthing.test.wav.tmp"
+    event.dest_path = "/tmp/audio/test.wav"
+
+    handler.on_moved(event)
+    handler.process_audio_file.assert_called_once_with("/tmp/audio/test.wav")
+
+
+def test_on_moved_ignores_directories():
+    """Directory rename events are ignored."""
+    handler = FolderWatcherHandler(_make_config())
+    handler.process_audio_file = MagicMock()
+
+    event = MagicMock()
+    event.is_directory = True
+    event.src_path = "/tmp/audio/olddir"
+    event.dest_path = "/tmp/audio/newdir"
+
+    handler.on_moved(event)
+    handler.process_audio_file.assert_not_called()
+
+
+def test_on_moved_ignores_non_audio_extensions():
+    """Non-audio file renames are ignored."""
+    handler = FolderWatcherHandler(_make_config())
+    handler.process_audio_file = MagicMock()
+
+    event = MagicMock()
+    event.is_directory = False
+    event.src_path = "/tmp/audio/.syncthing.notes.txt.tmp"
+    event.dest_path = "/tmp/audio/notes.txt"
+
+    handler.on_moved(event)
+    handler.process_audio_file.assert_not_called()
