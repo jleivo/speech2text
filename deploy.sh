@@ -1,12 +1,13 @@
 #!/bin/bash
 #
 # Author: Juha Leivo
-# Version: 1.1.0
+# Version: 1.2.0
 # Date: 2026-05-17
 #
 # Deploy script(s) to server, updating only if changed.
 #
 # History
+#   1.2.0 - 2026-05-17, add --verbose flag, report remote-only files as INFO
 #   1.1.0 - 2026-05-17, add directory support with tar over ssh
 #   1.0.0 - 2026-05-17, based on 1.2.1 version of deploy.sh, updated to deploy speech2text
 
@@ -30,14 +31,19 @@ fi
 
 # Default to dry-run. Pass --apply or --commit to perform changes.
 DRY_RUN=1
+VERBOSE=0
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --apply|--commit)
             DRY_RUN=0
             shift ;;
+        --verbose|-v)
+            VERBOSE=1
+            shift ;;
         --help|-h)
-            echo "Usage: $0 [--apply|--commit]"
+            echo "Usage: $0 [--apply|--commit] [--verbose]"
             echo "Default is dry-run (no changes). Use --apply to perform changes."
+            echo "Use --verbose for detailed output."
             exit 0
             ;;
         *)
@@ -77,9 +83,9 @@ for entry in $files_to_update; do
     fi
 
     if [ ! -e "$src" ]; then
-        msg="source $src does not exist, skipping"
-        echo "Warning: $msg"
-        failures+=("$msg")
+        if [ "$VERBOSE" -eq 1 ]; then
+            echo "INFO: Source $src does not exist locally, skipping"
+        fi
         continue
     fi
 
@@ -181,13 +187,55 @@ for entry in $files_to_update; do
             fi
         else
             # Directory exists, check for changes by comparing file lists and checksums
-            local_checksums=$(cd "$dir_src" && find . -type f -exec md5sum {} + | sort)
-            # shellcheck disable=SC2029
-            remote_checksums=$(ssh "$ssh_user@$tgt_server" "cd $remote_target && find . -type f -exec md5sum {} + 2>/dev/null | sort" || echo "")
+            # Only check non-hidden files that exist locally to avoid false mismatches
+            local_checksums=$(cd "$dir_src" && find . -type f -not -path '*/.*' -exec md5sum {} + | sort)
+            local_files=$(cd "$dir_src" && find . -type f -not -path '*/.*')
+            remote_checksums=""
+            if [ -n "$local_files" ]; then
+                remote_cmd="cd $remote_target && "
+                while IFS= read -r f; do
+                    remote_cmd+="md5sum '$f' 2>/dev/null; "
+                done <<< "$local_files"
+                # shellcheck disable=SC2029
+                remote_checksums=$(ssh "$ssh_user@$tgt_server" "$remote_cmd" | sort)
+            fi
+
+            # Report remote non-hidden files not present locally (verbose only)
+            if [ "$VERBOSE" -eq 1 ]; then
+                # shellcheck disable=SC2029
+                remote_all_files=$(ssh "$ssh_user@$tgt_server" "cd $remote_target && find . -type f -not -path '*/.*' 2>/dev/null" | sort)
+                if [ -n "$remote_all_files" ]; then
+                    while IFS= read -r rf; do
+                        if ! echo "$local_files" | grep -qxF "$rf"; then
+                            echo "INFO: Remote file $remote_target/$rf does not exist locally"
+                        fi
+                    done <<< "$remote_all_files"
+                fi
+            fi
 
             if [ "$local_checksums" = "$remote_checksums" ]; then
                 echo "$(basename "$src") on $tgt_server is up to date"
             else
+                # Show specific differences
+                echo "Changes detected in $(basename "$src"):"
+                # Files with different checksums (modified)
+                while IFS= read -r line; do
+                    [ -z "$line" ] && continue
+                    local_hash=$(echo "$line" | awk '{print $1}')
+                    local_file=$(echo "$line" | awk '{print $2}')
+                    remote_hash=$(echo "$remote_checksums" | grep " ${local_file}$" | awk '{print $1}')
+                    if [ -n "$remote_hash" ] && [ "$local_hash" != "$remote_hash" ]; then
+                        echo "  modified: $local_file"
+                    fi
+                done <<< "$local_checksums"
+                # Files missing on remote (new locally)
+                while IFS= read -r line; do
+                    [ -z "$line" ] && continue
+                    local_file=$(echo "$line" | awk '{print $2}')
+                    if ! echo "$remote_checksums" | grep -q " ${local_file}$"; then
+                        echo "  new: $local_file"
+                    fi
+                done <<< "$local_checksums"
                 echo "Copying updated directory $(basename "$src") to $tgt_server:$remote_target"
                 planned_actions+=("sync $src -> $tgt_server:$remote_target/")
                 if [ $DRY_RUN -eq 0 ]; then
