@@ -18,7 +18,7 @@ ssh_user="juha"
 #   src:dest            -> copied/synced to remote path 'dest' (as provided)
 # Local src paths may be absolute or relative to this repository root.
 # Directories are synced with tar over ssh; files use md5sum + scp.
-files_to_update='src/:/srv/speech2text requirements.txt:/srv/speech2text/requirements.txt'
+files_to_update='src/:/srv/speech2text src/main.py:/srv/speech2text/main.py src/requirements.txt:/srv/speech2text/requirements.txt'
 
 # test can one connect
 if ping -c 1 -W 1 $tgt_server |grep "^rtt" > /dev/null; then
