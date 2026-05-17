@@ -57,6 +57,7 @@ fi
 declare -a failures=()
 declare -a planned_actions=()
 declare -a performed_actions=()
+declare -A ensured_dirs=()
 
 # Helper: resolve local path to an absolute path inside this repo when possible
 repo_root="$(cd "$(dirname "$0")" && pwd)"
@@ -128,23 +129,35 @@ for entry in $files_to_update; do
 
     # Ensure remote target directory exists (or plan to)
     dir_needs_sync=0
-    # shellcheck disable=SC2029
-    if ssh "$ssh_user@$tgt_server" "[ -d $remote_target ]"; then
-        # Directory already exists; no action needed
-        :
+    # For directories, check if remote_target exists; for files, check parent directory remote_dir
+    if [ $is_dir -eq 1 ]; then
+        check_path="$remote_target"
     else
-        planned_actions+=("ensure remote directory $remote_target on $tgt_server")
-        if [ $DRY_RUN -eq 0 ]; then
-            if ! mkdir_out=$(ssh "$ssh_user@$tgt_server" "mkdir -p $remote_target" 2>&1); then
-                msg="Failed to create remote directory $remote_target on $tgt_server: $mkdir_out"
-                echo "Error: $msg"
-                failures+=("$msg")
-                continue
+        check_path="$remote_dir"
+    fi
+    # Skip if we already planned/created this directory in a previous iteration
+    if [ -z "${ensured_dirs[$check_path]+x}" ]; then
+        # shellcheck disable=SC2029
+        if ssh "$ssh_user@$tgt_server" "[ -d $check_path ]"; then
+            # Directory already exists; no action needed
+            :
+        else
+            planned_actions+=("ensure remote directory $check_path on $tgt_server")
+            if [ $DRY_RUN -eq 0 ]; then
+                if ! mkdir_out=$(ssh "$ssh_user@$tgt_server" "mkdir -p $check_path" 2>&1); then
+                    msg="Failed to create remote directory $check_path on $tgt_server: $mkdir_out"
+                    echo "Error: $msg"
+                    failures+=("$msg")
+                    continue
+                fi
+                performed_actions+=("created remote directory $check_path on $tgt_server")
             fi
-            performed_actions+=("created remote directory $remote_target on $tgt_server")
+            # Directory is new, so we always need to sync (only relevant for directories)
+            if [ $is_dir -eq 1 ]; then
+                dir_needs_sync=1
+            fi
         fi
-        # Directory is new, so we always need to sync
-        dir_needs_sync=1
+        ensured_dirs["$check_path"]=1
     fi
 
     if [ $is_dir -eq 1 ]; then
@@ -155,7 +168,7 @@ for entry in $files_to_update; do
         if [ $dir_needs_sync -eq 1 ]; then
             # Directory is new, always plan/perform full sync
             echo "Copying directory $(basename "$src") to $tgt_server:$remote_target"
-            planned_actions+=("sync $src/ -> $tgt_server:$remote_target/")
+            planned_actions+=("sync $src -> $tgt_server:$remote_target/")
             if [ $DRY_RUN -eq 0 ]; then
                 # shellcheck disable=SC2029
                 if ! tar_out=$(tar -C "$src" -cf - . | ssh "$ssh_user@$tgt_server" "cd $remote_target && tar -xf -" 2>&1); then
@@ -164,7 +177,7 @@ for entry in $files_to_update; do
                     failures+=("$msg")
                     continue
                 fi
-                performed_actions+=("synced $src/ -> $tgt_server:$remote_target/")
+                performed_actions+=("synced $src -> $tgt_server:$remote_target/")
             fi
         else
             # Directory exists, check for changes by comparing file lists and checksums
@@ -176,7 +189,7 @@ for entry in $files_to_update; do
                 echo "$(basename "$src") on $tgt_server is up to date"
             else
                 echo "Copying updated directory $(basename "$src") to $tgt_server:$remote_target"
-                planned_actions+=("sync $src/ -> $tgt_server:$remote_target/")
+                planned_actions+=("sync $src -> $tgt_server:$remote_target/")
                 if [ $DRY_RUN -eq 0 ]; then
                     # shellcheck disable=SC2029
                     if ! tar_out=$(tar -C "$src" -cf - . | ssh "$ssh_user@$tgt_server" "cd $remote_target && tar -xf -" 2>&1); then
@@ -185,7 +198,7 @@ for entry in $files_to_update; do
                         failures+=("$msg")
                         continue
                     fi
-                    performed_actions+=("synced $src/ -> $tgt_server:$remote_target/")
+                    performed_actions+=("synced $src -> $tgt_server:$remote_target/")
                 fi
             fi
         fi
@@ -199,23 +212,34 @@ for entry in $files_to_update; do
         remote_md5=$(ssh "$ssh_user@$tgt_server" md5sum "$remote_target" 2>/dev/null | awk '{print $1}' || echo "")
 
         if [ -z "$remote_md5" ] || [ "$remote_md5" != "$src_md5" ]; then
+            # preserve permissions with scp -p
+            if [ -x "$src" ]; then
+                action_desc="copy $src -> $tgt_server:$remote_target and chmod +x"
+            else
+                action_desc="copy $src -> $tgt_server:$remote_target"
+            fi
             echo "Copying updated $(basename "$src") to $tgt_server:$remote_target"
-            planned_actions+=("copy $src -> $tgt_server:$remote_target and chmod +x")
+            planned_actions+=("$action_desc")
             if [ $DRY_RUN -eq 0 ]; then
-                if ! scp_out=$(scp "$src" "$ssh_user@$tgt_server":"$remote_target" 2>&1); then
+                if ! scp_out=$(scp -p "$src" "$ssh_user@$tgt_server":"$remote_target" 2>&1); then
                     original_msg="scp failed for $src -> $remote_target: $scp_out"
                     echo "Error: $original_msg"
                     # Attempt fallback: copy to /tmp and move with sudo (interactive sudo prompt)
                     fallback_target="/tmp/$(basename "$src")"
                     echo "Attempting fallback copy to $tgt_server:$fallback_target"
-                    if scp_fallback_out=$(scp "$src" "$ssh_user@$tgt_server":"$fallback_target" 2>&1); then
+                    if scp_fallback_out=$(scp -p "$src" "$ssh_user@$tgt_server":"$fallback_target" 2>&1); then
                         echo "Fallback copy succeeded, moving to final destination with sudo"
                         # Allocate a pseudo-tty for sudo password prompt
-                        if ! ssh -t "$ssh_user@$tgt_server" "sudo mv $fallback_target $remote_target && sudo chmod +x $remote_target"; then
-                            fallback_msg="fallback sudo mv/chmod failed for $fallback_target -> $remote_target"
+                        if ! ssh -t "$ssh_user@$tgt_server" "sudo mv $fallback_target $remote_target"; then
+                            fallback_msg="fallback sudo mv failed for $fallback_target -> $remote_target"
                             echo "Error: $fallback_msg"
                             failures+=("$original_msg" "$fallback_msg")
                         else
+                            # preserve permissions after sudo mv
+                            if [ -x "$src" ]; then
+                                # shellcheck disable=SC2029
+                                ssh "$ssh_user@$tgt_server" "sudo chmod +x $remote_target"
+                            fi
                             performed_actions+=("fallback copy and sudo mv $fallback_target -> $remote_target")
                         fi
                     else
@@ -226,13 +250,16 @@ for entry in $files_to_update; do
                     continue
                 fi
                 performed_actions+=("copied $src -> $tgt_server:$remote_target")
-                # shellcheck disable=SC2029
-                if ! chmod_out=$(ssh "$ssh_user@$tgt_server" chmod +x "$remote_target" 2>&1); then
-                    msg="chmod failed for $remote_target on $tgt_server: $chmod_out"
-                    echo "Warning: $msg"
-                    failures+=("$msg")
-                else
-                    performed_actions+=("chmod +x $remote_target on $tgt_server")
+                # only chmod +x if source is executable
+                if [ -x "$src" ]; then
+                    # shellcheck disable=SC2029
+                    if ! chmod_out=$(ssh "$ssh_user@$tgt_server" chmod +x "$remote_target" 2>&1); then
+                        msg="chmod failed for $remote_target on $tgt_server: $chmod_out"
+                        echo "Warning: $msg"
+                        failures+=("$msg")
+                    else
+                        performed_actions+=("chmod +x $remote_target on $tgt_server")
+                    fi
                 fi
             fi
         else
