@@ -34,6 +34,19 @@ Edit `config/config.json`:
 
 ### 3. Set up your API key
 
+#### Option A: HashiCorp Vault (recommended for production)
+
+Add to your `config/config.json`:
+
+```json
+"vault_secret_path": "secret/hosts/<hostname>/litellm-speech2text",
+"vault_service": "speech2text"
+```
+
+The app fetches the API key from Vault at startup. See `docs/SECRETS.md` for Vault setup.
+
+#### Option B: Environment variable (for development)
+
 ```bash
 export OPENAI_API_KEY="your-api-key"
 ```

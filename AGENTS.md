@@ -86,19 +86,27 @@ Config validation: jsonschema enforces required fields, magic word keys must be 
 
 ## Transcription Flow
 
-1. LiteLLM backend: calls `litellm.transcription()` with `OPENAI_API_KEY` env var
-2. On failure → fallback to local Whisper with `turbo` model
-3. Local backend: `whisper.load_model(<model>).transcribe()`
-4. File handler waits for file size stability before processing
+1. If `vault_secret_path` configured: fetch API key from Vault → set `OPENAI_API_KEY`; else use env var
+2. LiteLLM backend: calls `litellm.transcription()` with `OPENAI_API_KEY`
+3. On failure → fallback to local Whisper with `turbo` model
+4. Local backend: `whisper.load_model(<model>).transcribe()`
+5. File handler waits for file size stability before processing
 
 ## Environment Variables
 
-- `OPENAI_API_KEY` — required for LiteLLM backend
+- `OPENAI_API_KEY` — fallback for LiteLLM backend when Vault not configured; overridden by Vault when `vault_secret_path` is set
 - `OPENAI_API_BASE` — optional custom LiteLLM server URL
 - `LITELLM_BASE_URL` — integration test override
 - `LITELLM_MODEL` — integration test model override
 
-**IMPORTANT:** Never store secrets in text files. See [docs/SECRETS.md](docs/SECRETS.md) for secrets management policy.
+## Vault Integration
+
+When `vault_secret_path` is configured, the app fetches the API key from HashiCorp Vault at startup using AppRole auth. See `docs/SECRETS.md` for Vault setup.
+
+- `vault_secret_path` — Vault KV v2 path (e.g. `secret/hosts/myhost/litellm-speech2text`)
+- `vault_service` — optional; uses `/etc/vault/services/<service>/` credentials when set, `/etc/vault/host/` when omitted
+- Vault failure at startup is fatal — the app exits with error
+- When Vault is not configured, `OPENAI_API_KEY` env var is used as before
 
 ## Testing Patterns
 
