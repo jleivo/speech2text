@@ -55,6 +55,8 @@ tests/
 docs/
   user-guide.md      # Full user documentation
   test-guide.md      # Test suite documentation
+  systemd-setup.md   # Production deployment guide
+  SECRETS.md         # Secrets management policy
 ```
 
 ## Config Schema
@@ -96,6 +98,8 @@ Config validation: jsonschema enforces required fields, magic word keys must be 
 - `LITELLM_BASE_URL` — integration test override
 - `LITELLM_MODEL` — integration test model override
 
+**IMPORTANT:** Never store secrets in text files. See [docs/SECRETS.md](docs/SECRETS.md) for secrets management policy.
+
 ## Testing Patterns
 
 - Unit tests use `unittest.mock.patch` for all external deps (litellm, whisper, subprocess)
@@ -125,3 +129,16 @@ Examples:
 - `feat: add EMAIL magic word for email notifications`
 - `fix: handle empty transcription in router`
 - `test: add unit test for config validation`
+
+## Secret management
+
+see docs/SECRETS.md
+
+## CHANGELOG
+
+Follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format in `CHANGELOG.md`:
+
+- Every feature, fix, or change goes under `[Unreleased]` as you work
+- Use `### Added`, `### Changed`, `### Fixed`, `### Removed`, `### Deprecated`, `### Security`
+- When a release is made, rename `[Unreleased]` to the new version with today's date (e.g. `## [1.1.0] - 2026-05-21`) and add a fresh empty `[Unreleased]` section above it
+- Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
