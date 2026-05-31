@@ -15,6 +15,7 @@ CONFIG_SCHEMA = {
         "transcription_log": {"type": "string"},
         "backend": {"type": "string"},
         "model": {"type": "string"},
+        "litellm_base_url": {"type": "string"},
         "default_action": {
             "type": "object",
             "properties": {"script_path": {"type": "string"}},
@@ -40,6 +41,7 @@ DEFAULTS = {
     "delete_after_processing": False,
     "backend": "litellm",
     "model": "whisper-1",
+    "litellm_base_url": "",
 }
 
 

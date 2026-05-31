@@ -11,6 +11,7 @@ def _make_config(**overrides):
         "delete_after_processing": False,
         "backend": "litellm",
         "model": "whisper-1",
+        "litellm_base_url": "http://litellm.intra.leivo:4000",
         "magic_words": {
             "FILE": {"script_path": "/bin/handler.py"}
         },
@@ -71,7 +72,10 @@ def test_process_audio_full_pipeline(mock_wait, mock_transcribe, mock_route):
 
     mock_wait.assert_called_once_with("/tmp/audio/test.wav")
     mock_transcribe.assert_called_once_with(
-        "/tmp/audio/test.wav", backend="litellm", model="whisper-1"
+        "/tmp/audio/test.wav",
+        backend="litellm",
+        model="whisper-1",
+        litellm_base_url="http://litellm.intra.leivo:4000",
     )
     mock_route.assert_called_once_with("file my note", config)
 

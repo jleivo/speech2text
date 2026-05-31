@@ -52,6 +52,7 @@ class FolderWatcherHandler(FileSystemEventHandler):
                 file_path,
                 backend=self.config["backend"],
                 model=self.config["model"],
+                litellm_base_url=self.config.get("litellm_base_url"),
             )
         except Exception:
             logger.exception("Failed to transcribe %s", file_path)

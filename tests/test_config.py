@@ -17,6 +17,7 @@ def test_load_valid_config():
             "transcription_log": "/tmp/speech2text.log",
             "backend": "litellm",
             "model": "whisper-1",
+            "litellm_base_url": "",
             "default_action": {"script_path": "/usr/local/bin/default.py"},
             "magic_words": {
                 "FILE": {"script_path": "/usr/local/bin/file_handler.py"},
@@ -48,6 +49,7 @@ def test_load_minimal_config_gets_defaults():
         assert config["delete_after_processing"] is False
         assert config["backend"] == "litellm"
         assert config["model"] == "whisper-1"
+        assert config.get("litellm_base_url") == ""
 
 
 def test_load_config_missing_file():
