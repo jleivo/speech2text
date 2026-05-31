@@ -1,5 +1,5 @@
 from unittest.mock import patch, mock_open, MagicMock
-from src.vault import vault_client
+from src.vault import vault_client, fetch_api_key
 
 
 @patch("src.vault.hvac.Client")
@@ -56,3 +56,20 @@ def test_vault_client_service_level(mock_client_class):
         secret_id="svc-secret-012",
     )
     assert result == mock_client
+
+
+@patch("src.vault.vault_client")
+def test_fetch_api_key(mock_vault_client):
+    mock_client = MagicMock()
+    mock_vault_client.return_value = mock_client
+    mock_client.secrets.kv.v2.read_secret_version.return_value = {
+        "data": {"data": {"value": "sk-test-api-key"}}
+    }
+
+    result = fetch_api_key("secret/hosts/myhost/litellm", service="speech2text")
+
+    mock_vault_client.assert_called_once_with(service="speech2text")
+    mock_client.secrets.kv.v2.read_secret_version.assert_called_once_with(
+        path="secret/hosts/myhost/litellm"
+    )
+    assert result == "sk-test-api-key"
