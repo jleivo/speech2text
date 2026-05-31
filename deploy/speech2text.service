@@ -8,23 +8,18 @@ User=speech2text
 Group=speech2text
 WorkingDirectory=/srv/speech2text
 
-# Set environment variables
 Environment="OPENAI_API_BASE=http://litellm.intra.leivo"
 Environment="PATH=/srv/speech2text/.venv/bin:/usr/bin:/bin"
 Environment="HOME=/srv/speech2text"
 
-# Start the application (retrieve API key from vault at startup, never stored on disk)
-ExecStart=/bin/bash -c 'export OPENAI_API_KEY=$(/usr/local/bin/vault.sh get secret/hosts/tuvlnxsrvp04/litellm-speech2text) && exec /srv/speech2text/.venv/bin/python3 /srv/speech2text/main.py'
+ExecStart=/srv/speech2text/.venv/bin/python3 /srv/speech2text/main.py
 
-# Restart on failure
 Restart=always
 RestartSec=5
 
-# Resource limits
 MemoryMax=2G
 CPUQuota=80%
 
-# Security hardening
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
