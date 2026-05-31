@@ -93,3 +93,21 @@ def test_load_config_magic_word_missing_script_path():
 
         with pytest.raises(jsonschema.exceptions.ValidationError):
             load_config(config_path)
+
+
+def test_load_config_with_vault_fields():
+    """Vault config fields are accepted by the schema."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config_path = os.path.join(tmpdir, "config.json")
+        config = {
+            "folder_to_watch": "/tmp/audio",
+            "magic_words": {"FILE": {"script_path": "/bin/handler.py"}},
+            "vault_secret_path": "secret/hosts/myhost/litellm-speech2text",
+            "vault_service": "speech2text",
+        }
+        with open(config_path, "w") as f:
+            json.dump(config, f)
+
+        result = load_config(config_path)
+        assert result["vault_secret_path"] == "secret/hosts/myhost/litellm-speech2text"
+        assert result["vault_service"] == "speech2text"

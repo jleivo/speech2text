@@ -20,6 +20,8 @@ CONFIG_SCHEMA = {
             "properties": {"script_path": {"type": "string"}},
             "required": ["script_path"],
         },
+        "vault_secret_path": {"type": "string"},
+        "vault_service": {"type": "string"},
         "magic_words": {
             "type": "object",
             "patternProperties": {
