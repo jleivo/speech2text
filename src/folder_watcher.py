@@ -29,6 +29,14 @@ class FolderWatcherHandler(FileSystemEventHandler):
         self.config = config
         self.extensions = tuple(config.get("watched_extensions", []))
 
+    def on_moved(self, event):
+        if event.is_directory:
+            return
+        if not event.dest_path.endswith(self.extensions):
+            return
+        logger.info("New audio file detected via rename: %s", event.dest_path)
+        self.process_audio_file(event.dest_path)
+
     def on_created(self, event):
         if event.is_directory:
             return

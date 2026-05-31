@@ -14,6 +14,7 @@ cd speech2text
 python3 -m venv .venv --prompt speech2text
 source .venv/bin/activate
 pip install -r requirements.txt
+sudo apt-get install ffmpeg -y
 ```
 
 ### 2. Configure
