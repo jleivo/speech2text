@@ -18,6 +18,7 @@ def test_load_valid_config():
             "backend": "litellm",
             "model": "whisper-1",
             "default_action": {"script_path": "/usr/local/bin/default.py"},
+            "writable_paths": [],
             "magic_words": {
                 "FILE": {"script_path": "/usr/local/bin/file_handler.py"},
                 "APPEND": {"script_path": "/usr/local/bin/append_handler.py"},
@@ -111,3 +112,36 @@ def test_load_config_with_vault_fields():
         result = load_config(config_path)
         assert result["vault_secret_path"] == "secret/hosts/myhost/litellm-speech2text"
         assert result["vault_service"] == "speech2text"
+
+
+def test_load_minimal_config_gets_writable_paths_default():
+    """Minimal config gets empty writable_paths default."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config_path = os.path.join(tmpdir, "config.json")
+        minimal = {
+            "folder_to_watch": "/tmp/audio",
+            "magic_words": {
+                "FILE": {"script_path": "/usr/local/bin/file_handler.py"}
+            },
+        }
+        with open(config_path, "w") as f:
+            json.dump(minimal, f)
+
+        config = load_config(config_path)
+        assert config["writable_paths"] == []
+
+
+def test_load_config_with_writable_paths():
+    """Config with writable_paths loads the values correctly."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config_path = os.path.join(tmpdir, "config.json")
+        config = {
+            "folder_to_watch": "/tmp/audio",
+            "magic_words": {"FILE": {"script_path": "/bin/handler.py"}},
+            "writable_paths": ["/srv/Obsidian/Inbox", "/var/log/speech2text"],
+        }
+        with open(config_path, "w") as f:
+            json.dump(config, f)
+
+        result = load_config(config_path)
+        assert result["writable_paths"] == ["/srv/Obsidian/Inbox", "/var/log/speech2text"]

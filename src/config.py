@@ -22,6 +22,10 @@ CONFIG_SCHEMA = {
         },
         "vault_secret_path": {"type": "string"},
         "vault_service": {"type": "string"},
+        "writable_paths": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
         "magic_words": {
             "type": "object",
             "patternProperties": {
@@ -42,6 +46,7 @@ DEFAULTS = {
     "delete_after_processing": False,
     "backend": "litellm",
     "model": "whisper-1",
+    "writable_paths": [],
 }
 
 
