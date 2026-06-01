@@ -34,19 +34,23 @@ echo "Generating systemd service from template..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_PATH="/srv/speech2text/config/config.json"
 
-# Read writable_paths from config.json using python
-WRITABLE_PATHS=$(python3 -c "
+if [ ! -f "$CONFIG_PATH" ]; then
+    echo "ERROR: Config not found at $CONFIG_PATH" >&2
+    exit 1
+fi
+
+# Read config, build ReadWritePaths, and substitute template in one Python call
+python3 -c "
 import json, sys
-with open('${CONFIG_PATH}') as f:
+with open(sys.argv[1]) as f:
     cfg = json.load(f)
 paths = ['/srv/speech2text'] + cfg.get('writable_paths', [])
-print(':'.join(paths))
-")
-
-# Substitute placeholder in template
-sed "s|{{READ_WRITE_PATHS}}|${WRITABLE_PATHS}|g" \
-    "$SCRIPT_DIR/deploy/speech2text.service.tmpl" \
-    > /etc/systemd/system/speech2text.service
+rw_paths = ':'.join(paths)
+with open(sys.argv[2]) as tmpl:
+    content = tmpl.read().replace('{{READ_WRITE_PATHS}}', rw_paths)
+with open(sys.argv[3], 'w') as out:
+    out.write(content)
+" "$CONFIG_PATH" "$SCRIPT_DIR/speech2text.service.tmpl" /etc/systemd/system/speech2text.service
 sudo systemctl daemon-reload
 
 # 6. Enable and start service
