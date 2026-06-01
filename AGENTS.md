@@ -72,6 +72,7 @@ Optional (with defaults):
 - `backend` — "litellm" (default) or "local"
 - `model` — "whisper-1" (LiteLLM) or "tiny/base/small/medium/large/turbo" (local)
 - `default_action` — script for unmatched transcriptions (receives full text)
+- `writable_paths` — [] (default, extra dirs for systemd ReadWritePaths beyond /srv/speech2text)
 
 Config validation: jsonschema enforces required fields, magic word keys must be `^[A-Z]+$`.
 
