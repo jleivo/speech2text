@@ -7,6 +7,7 @@
     "model": "whisper-1",
     "vault_secret_path": "secret/hosts/tuvlnxsrvp04/litellm-speech2text",
     "vault_service": "speech2text",
+    "writable_paths": ["/srv/Obsidian/Inbox"],
     "magic_words": {
         "FILE": {
             "script_path": "examples/create_note.py"
