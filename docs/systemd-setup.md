@@ -56,10 +56,13 @@ python3 -m venv .venv --prompt speech2text
 ### 4. Install Service
 
 ```bash
-sudo cp deploy/speech2text.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable speech2text.service
-sudo systemctl start speech2text.service
+sudo deploy/setup.sh
+```
+
+Or to only regenerate the systemd service (e.g. after updating `writable_paths`):
+
+```bash
+sudo deploy/setup.sh --update-service
 ```
 
 ## Service Configuration
@@ -97,8 +100,10 @@ During deployment, `setup.sh` reads `writable_paths` from config and generates t
 
 To add a new writable path:
 1. Add the path to `writable_paths` in `config/config.json`
-2. Re-run `sudo deploy/setup.sh` (or manually regenerate the service file)
+2. Regenerate the service file: `sudo deploy/setup.sh --update-service`
 3. Restart: `sudo systemctl restart speech2text`
+
+The `--update-service` flag regenerates only the systemd unit file from the template and reloads systemd, without reinstalling the application or dependencies.
 
 ### Watch Directory
 

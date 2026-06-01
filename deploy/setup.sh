@@ -1,6 +1,40 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_PATH="/srv/speech2text/config/config.json"
+
+generate_service() {
+    echo "Generating systemd service from template..."
+    if [ ! -f "$CONFIG_PATH" ]; then
+        echo "ERROR: Config not found at $CONFIG_PATH" >&2
+        exit 1
+    fi
+
+    python3 -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    cfg = json.load(f)
+paths = ['/srv/speech2text'] + cfg.get('writable_paths', [])
+rw_paths = ':'.join(paths)
+with open(sys.argv[2]) as tmpl:
+    content = tmpl.read().replace('{{READ_WRITE_PATHS}}', rw_paths)
+with open(sys.argv[3], 'w') as out:
+    out.write(content)
+" "$CONFIG_PATH" "$SCRIPT_DIR/speech2text.service.tmpl" /etc/systemd/system/speech2text.service
+    sudo systemctl daemon-reload
+}
+
+if [ "$1" = "--update-service" ]; then
+    generate_service
+    sudo systemctl restart speech2text.service
+    echo ""
+    echo "=== Service Updated ==="
+    echo "ReadWritePaths regenerated from $CONFIG_PATH"
+    echo "Service restarted."
+    exit 0
+fi
+
 echo "=== Speech2Text Deployment Setup ==="
 
 # 1. Create dedicated user
@@ -30,28 +64,7 @@ fi
 /srv/speech2text/.venv/bin/pip install -r requirements.txt --upgrade
 
 # 5. Generate and install systemd service
-echo "Generating systemd service from template..."
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_PATH="/srv/speech2text/config/config.json"
-
-if [ ! -f "$CONFIG_PATH" ]; then
-    echo "ERROR: Config not found at $CONFIG_PATH" >&2
-    exit 1
-fi
-
-# Read config, build ReadWritePaths, and substitute template in one Python call
-python3 -c "
-import json, sys
-with open(sys.argv[1]) as f:
-    cfg = json.load(f)
-paths = ['/srv/speech2text'] + cfg.get('writable_paths', [])
-rw_paths = ':'.join(paths)
-with open(sys.argv[2]) as tmpl:
-    content = tmpl.read().replace('{{READ_WRITE_PATHS}}', rw_paths)
-with open(sys.argv[3], 'w') as out:
-    out.write(content)
-" "$CONFIG_PATH" "$SCRIPT_DIR/speech2text.service.tmpl" /etc/systemd/system/speech2text.service
-sudo systemctl daemon-reload
+generate_service
 
 # 6. Enable and start service
 echo "Enabling and starting service..."
