@@ -82,6 +82,24 @@ ExecStartPre=/bin/bash -c '/usr/local/bin/vault.sh get secret/hosts/tuvlnxsrvp04
 
 If your vault command differs, update this line in the service file.
 
+### Writable Paths
+
+Handler scripts may need write access to directories outside `/srv/speech2text`. Configure `writable_paths` in `config/config.json`:
+
+```json
+{
+    "writable_paths": ["/srv/Obsidian/Inbox", "/var/log/speech2text"],
+    ...
+}
+```
+
+During deployment, `setup.sh` reads `writable_paths` from config and generates the systemd `ReadWritePaths` directive automatically. `/srv/speech2text` is always included.
+
+To add a new writable path:
+1. Add the path to `writable_paths` in `config/config.json`
+2. Re-run `sudo deploy/setup.sh` (or manually regenerate the service file)
+3. Restart: `sudo systemctl restart speech2text`
+
 ### Watch Directory
 
 Configure the audio folder in `config/config.json`:
@@ -189,7 +207,7 @@ Then reload: `sudo systemctl daemon-reload`
 - Service runs as unprivileged `speech2text` user
 - No secrets written to disk
 - `NoNewPrivileges=true` prevents privilege escalation
-- `ProtectSystem=strict` makes filesystem read-only except specified paths
+- `ProtectSystem=strict` makes filesystem read-only except specified paths (auto-generated from `writable_paths` in config)
 - `ProtectHome=true` prevents access to user home directories
 
 ## Updates
