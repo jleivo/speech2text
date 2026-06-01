@@ -16,7 +16,7 @@ import json, sys
 with open(sys.argv[1]) as f:
     cfg = json.load(f)
 paths = ['/srv/speech2text'] + cfg.get('writable_paths', [])
-rw_paths = ':'.join(paths)
+    rw_paths = ' '.join(paths)
 with open(sys.argv[2]) as tmpl:
     content = tmpl.read().replace('{{READ_WRITE_PATHS}}', rw_paths)
 with open(sys.argv[3], 'w') as out:
