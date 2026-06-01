@@ -29,10 +29,24 @@ if [ ! -d ".venv" ]; then
 fi
 /srv/speech2text/.venv/bin/pip install -r requirements.txt --upgrade
 
-# 5. Install systemd service
-echo "Installing systemd service..."
+# 5. Generate and install systemd service
+echo "Generating systemd service from template..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-sudo cp "$SCRIPT_DIR/deploy/speech2text.service" /etc/systemd/system/
+CONFIG_PATH="/srv/speech2text/config/config.json"
+
+# Read writable_paths from config.json using python
+WRITABLE_PATHS=$(python3 -c "
+import json, sys
+with open('${CONFIG_PATH}') as f:
+    cfg = json.load(f)
+paths = ['/srv/speech2text'] + cfg.get('writable_paths', [])
+print(':'.join(paths))
+")
+
+# Substitute placeholder in template
+sed "s|{{READ_WRITE_PATHS}}|${WRITABLE_PATHS}|g" \
+    "$SCRIPT_DIR/deploy/speech2text.service.tmpl" \
+    > /etc/systemd/system/speech2text.service
 sudo systemctl daemon-reload
 
 # 6. Enable and start service
