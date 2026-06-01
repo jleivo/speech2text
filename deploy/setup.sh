@@ -16,12 +16,13 @@ import json, sys
 with open(sys.argv[1]) as f:
     cfg = json.load(f)
 paths = ['/srv/speech2text'] + cfg.get('writable_paths', [])
-    rw_paths = ' '.join(paths)
+rw_paths = ' '.join(paths)
 with open(sys.argv[2]) as tmpl:
     content = tmpl.read().replace('{{READ_WRITE_PATHS}}', rw_paths)
 with open(sys.argv[3], 'w') as out:
     out.write(content)
-" "$CONFIG_PATH" "$SCRIPT_DIR/speech2text.service.tmpl" /etc/systemd/system/speech2text.service
+" "$CONFIG_PATH" "$SCRIPT_DIR/speech2text.service.tmpl" \
+        /etc/systemd/system/speech2text.service
     sudo systemctl daemon-reload
 }
 
