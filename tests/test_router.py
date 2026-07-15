@@ -1,4 +1,6 @@
+import os
 import subprocess
+import sys
 from unittest.mock import patch, MagicMock
 from src.router import route_transcription
 
@@ -15,10 +17,14 @@ def test_route_matches_first_word():
         mock_run.return_value = MagicMock(returncode=0)
         result = route_transcription("file this is my note", config)
 
-    mock_run.assert_called_once_with(
-        ["python", "/usr/local/bin/file_handler.py", "this is my note"],
-        check=False,
-    )
+    call_args = mock_run.call_args
+    assert call_args[0][0][0] == sys.executable
+    assert call_args[0][0][1] == "/usr/local/bin/file_handler.py"
+    assert call_args[0][0][2] == "this is my note"
+    assert call_args[1]["check"] is False
+    assert call_args[1]["timeout"] == 30
+    # env should not contain OPENAI_API_KEY
+    assert "OPENAI_API_KEY" not in call_args[1]["env"]
     assert result == ("FILE", True)
 
 
@@ -34,10 +40,13 @@ def test_route_case_insensitive():
         mock_run.return_value = MagicMock(returncode=0)
         result = route_transcription("File this is my note", config)
 
-    mock_run.assert_called_once_with(
-        ["python", "/bin/handler.py", "this is my note"],
-        check=False,
-    )
+    call_args = mock_run.call_args
+    assert call_args[0][0][0] == sys.executable
+    assert call_args[0][0][1] == "/bin/handler.py"
+    assert call_args[0][0][2] == "this is my note"
+    assert call_args[1]["check"] is False
+    assert call_args[1]["timeout"] == 30
+    assert "OPENAI_API_KEY" not in call_args[1]["env"]
     assert result == ("FILE", True)
 
 
@@ -54,10 +63,13 @@ def test_route_no_match_uses_default():
         mock_run.return_value = MagicMock(returncode=0)
         result = route_transcription("hello world", config)
 
-    mock_run.assert_called_once_with(
-        ["python", "/bin/default.py", "hello world"],
-        check=False,
-    )
+    call_args = mock_run.call_args
+    assert call_args[0][0][0] == sys.executable
+    assert call_args[0][0][1] == "/bin/default.py"
+    assert call_args[0][0][2] == "hello world"
+    assert call_args[1]["check"] is False
+    assert call_args[1]["timeout"] == 30
+    assert "OPENAI_API_KEY" not in call_args[1]["env"]
     assert result == ("default", True)
 
 
@@ -103,10 +115,12 @@ def test_route_strips_only_first_word():
         mock_run.return_value = MagicMock(returncode=0)
         route_transcription("file   extra   spaces   here", config)
 
-    mock_run.assert_called_once_with(
-        ["python", "/bin/handler.py", "extra   spaces   here"],
-        check=False,
-    )
+    call_args = mock_run.call_args
+    assert call_args[0][0][0] == sys.executable
+    assert call_args[0][0][1] == "/bin/handler.py"
+    assert call_args[0][0][2] == "extra   spaces   here"
+    assert call_args[1]["check"] is False
+    assert call_args[1]["timeout"] == 30
 
 
 def test_route_single_word_transcription():
@@ -121,7 +135,61 @@ def test_route_single_word_transcription():
         mock_run.return_value = MagicMock(returncode=0)
         route_transcription("file", config)
 
-    mock_run.assert_called_once_with(
-        ["python", "/bin/handler.py", ""],
-        check=False,
-    )
+    call_args = mock_run.call_args
+    assert call_args[0][0][0] == sys.executable
+    assert call_args[0][0][1] == "/bin/handler.py"
+    assert call_args[0][0][2] == ""
+    assert call_args[1]["check"] is False
+    assert call_args[1]["timeout"] == 30
+
+
+def test_route_strips_null_bytes():
+    """Null bytes in transcription text are stripped before subprocess call."""
+    config = {
+        "magic_words": {
+            "FILE": {"script_path": "/bin/handler.py"}
+        },
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        route_transcription("file note\x00with\x00nulls", config)
+
+    call_args = mock_run.call_args
+    assert "\x00" not in call_args[0][0][2]
+    assert call_args[0][0][2] == "notewithnulls"
+
+
+def test_route_excludes_sensitive_env():
+    """OPENAI_API_KEY is excluded from subprocess environment."""
+    os.environ["OPENAI_API_KEY"] = "test-secret-key"
+    config = {
+        "magic_words": {
+            "FILE": {"script_path": "/bin/handler.py"}
+        },
+    }
+
+    try:
+        with patch("src.router.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            route_transcription("file test", config)
+
+        call_args = mock_run.call_args
+        assert "OPENAI_API_KEY" not in call_args[1]["env"]
+    finally:
+        del os.environ["OPENAI_API_KEY"]
+
+
+def test_route_subprocess_timeout():
+    """subprocess.run is called with timeout=30."""
+    config = {
+        "magic_words": {
+            "FILE": {"script_path": "/bin/handler.py"}
+        },
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        route_transcription("file test", config)
+
+    assert mock_run.call_args[1]["timeout"] == 30
