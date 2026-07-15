@@ -3,12 +3,29 @@ import hvac
 
 def vault_client(service=None):
     base = f"/etc/vault/services/{service}" if service else "/etc/vault/host"
+
+    with open("/etc/vault/vault_addr") as f:
+        url = f.read().strip()
+
+    if not url.startswith("https://"):
+        raise ValueError(
+            f"Vault URL must use HTTPS, got '{url}'"
+        )
+
     client = hvac.Client(
-        url=open("/etc/vault/vault_addr").read().strip(),
+        url=url,
+        verify=True,
+        timeout=10,
     )
+
+    with open(f"{base}/role_id") as f:
+        role_id = f.read().strip()
+    with open(f"{base}/secret_id") as f:
+        secret_id = f.read().strip()
+
     client.auth.approle.login(
-        role_id=open(f"{base}/role_id").read().strip(),
-        secret_id=open(f"{base}/secret_id").read().strip(),
+        role_id=role_id,
+        secret_id=secret_id,
     )
     return client
 

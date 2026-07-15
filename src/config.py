@@ -1,4 +1,5 @@
 import json
+import os
 import jsonschema
 
 DEFAULT_EXTENSIONS = [".wav", ".mp3", ".flac", ".m4a", ".ogg"]
@@ -21,7 +22,10 @@ CONFIG_SCHEMA = {
             "required": ["script_path"],
         },
         "vault_secret_path": {"type": "string"},
-        "vault_service": {"type": "string"},
+        "vault_service": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+        },
         "writable_paths": {
             "type": "array",
             "items": {"type": "string"},
@@ -39,6 +43,7 @@ CONFIG_SCHEMA = {
         },
     },
     "required": ["folder_to_watch", "magic_words"],
+    "additionalProperties": False,
 }
 
 DEFAULTS = {
@@ -49,12 +54,30 @@ DEFAULTS = {
     "writable_paths": [],
 }
 
+# Path fields that must be absolute and without .. components
+_PATH_FIELDS = {
+    "folder_to_watch",
+    "transcription_log",
+}
+
+
+def _validate_path(value, field):
+    if not os.path.isabs(value):
+        raise ValueError(f"{field}: path must be absolute, got '{value}'")
+    parts = value.split(os.sep)
+    if ".." in parts:
+        raise ValueError(f"{field}: path must not contain '..' components, got '{value}'")
+
 
 def load_config(config_path):
     with open(config_path, "r") as f:
         config = json.load(f)
 
     jsonschema.validate(instance=config, schema=CONFIG_SCHEMA)
+
+    for field in _PATH_FIELDS:
+        if field in config and isinstance(config[field], str):
+            _validate_path(config[field], field)
 
     for key, value in DEFAULTS.items():
         config.setdefault(key, value)

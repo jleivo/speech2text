@@ -1,9 +1,23 @@
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import litellm
 import whisper
 
 logger = logging.getLogger(__name__)
+
+# Module-level Whisper model cache (_cache_lock protects _whisper_cache)
+_whisper_cache: dict = {}
+_cache_lock = threading.Lock()
+
+
+def _get_whisper_model(model_name):
+    if model_name not in _whisper_cache:
+        with _cache_lock:
+            if model_name not in _whisper_cache:
+                _whisper_cache[model_name] = whisper.load_model(model_name)
+    return _whisper_cache[model_name]
 
 
 def transcribe_audio(file_path, backend="litellm", model="whisper-1"):
@@ -19,11 +33,18 @@ def transcribe_audio(file_path, backend="litellm", model="whisper-1"):
 
 def _transcribe_litellm(file_path, model):
     with open(file_path, "rb") as audio_file:
-        response = litellm.transcription(model=model, file=audio_file)
+        response = litellm.transcription(model=model, file=audio_file, timeout=60)
     return response.text
 
 
-def _transcribe_local(file_path, model):
-    whisper_model = whisper.load_model(model)
-    result = whisper_model.transcribe(file_path, language=None)
+def _transcribe_local(file_path, model, timeout=300):
+    whisper_model = _get_whisper_model(model)
+
+    def _run():
+        return whisper_model.transcribe(file_path, language=None)
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_run)
+        result = future.result(timeout=timeout)
+
     return result["text"]

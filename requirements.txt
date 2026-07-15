@@ -6,4 +6,3 @@ openai-whisper
 torch
 requests
 hvac>=2.0.0
-hvac>=2.0.0
