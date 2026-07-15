@@ -8,9 +8,10 @@ import pytest
 from src.main import main
 
 
+@patch("src.main._validate_script_paths")
 @patch("src.main.Observer")
 @patch("src.main.FolderWatcherHandler")
-def test_main_starts_observer(mock_handler_class, mock_observer_class):
+def test_main_starts_observer(mock_handler_class, mock_observer_class, mock_validate):
     """Main starts observer on configured folder."""
     with tempfile.TemporaryDirectory() as tmpdir:
         config_path = os.path.join(tmpdir, "config.json")
@@ -40,10 +41,11 @@ def test_main_missing_config():
         main("/nonexistent/config.json")
 
 
+@patch("src.main._validate_script_paths")
 @patch("src.main.fetch_api_key")
 @patch("src.main.Observer")
 @patch("src.main.FolderWatcherHandler")
-def test_main_fetches_api_key_from_vault(mock_handler_class, mock_observer_class, mock_fetch):
+def test_main_fetches_api_key_from_vault(mock_handler_class, mock_observer_class, mock_fetch, mock_validate):
     mock_fetch.return_value = "sk-vault-key-123"
     mock_observer = MagicMock()
     mock_observer_class.return_value = mock_observer
@@ -73,10 +75,11 @@ def test_main_fetches_api_key_from_vault(mock_handler_class, mock_observer_class
             os.environ.pop("OPENAI_API_KEY", None)
 
 
+@patch("src.main._validate_script_paths")
 @patch("src.main.fetch_api_key")
 @patch("src.main.Observer")
 @patch("src.main.FolderWatcherHandler")
-def test_main_skips_vault_when_not_configured(mock_handler_class, mock_observer_class, mock_fetch):
+def test_main_skips_vault_when_not_configured(mock_handler_class, mock_observer_class, mock_fetch, mock_validate):
     mock_observer = MagicMock()
     mock_observer_class.return_value = mock_observer
     mock_observer.start.side_effect = KeyboardInterrupt

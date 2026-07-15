@@ -1,4 +1,5 @@
 import os
+import sys
 import pytest
 import requests
 from src.transcribe import transcribe_audio
@@ -17,13 +18,23 @@ def _server_available():
         return False
 
 
+def _whisper_is_mocked():
+    """Check if whisper module is mocked (conftest.py stub for collection)."""
+    return "whisper" in sys.modules and not hasattr(sys.modules.get("whisper"), "__file__")
+
+
 skip_no_server = pytest.mark.skipif(
     not _server_available(),
     reason=f"LiteLLM server not available at {LITELLM_BASE_URL}",
 )
+skip_no_whisper = pytest.mark.skipif(
+    _whisper_is_mocked(),
+    reason="Local Whisper not installed (mocked for test collection)",
+)
 
 
 @skip_no_server
+@skip_no_whisper
 def test_transcribe_voice_001():
     """Transcribe Finnish test audio file 001 via LiteLLM."""
     os.environ.setdefault("OPENAI_API_BASE", LITELLM_BASE_URL)
@@ -37,6 +48,7 @@ def test_transcribe_voice_001():
 
 
 @skip_no_server
+@skip_no_whisper
 def test_transcribe_voice_002():
     """Transcribe Finnish test audio file 002 via LiteLLM."""
     os.environ.setdefault("OPENAI_API_BASE", LITELLM_BASE_URL)
