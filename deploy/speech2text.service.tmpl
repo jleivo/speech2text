@@ -8,7 +8,7 @@ User=speech2text
 Group=speech2text
 WorkingDirectory=/srv/speech2text
 
-Environment="OPENAI_API_BASE=http://litellm.intra.leivo"
+Environment="OPENAI_API_BASE=https://litellm.intra.leivo"
 Environment="PATH=/srv/speech2text/.venv/bin:/usr/bin:/bin"
 Environment="HOME=/srv/speech2text"
 
@@ -17,13 +17,24 @@ ExecStart=/srv/speech2text/.venv/bin/python3 /srv/speech2text/main.py
 Restart=always
 RestartSec=5
 
+# Resource limits
 MemoryMax=4G
 CPUQuota=80%
 
+# Systemd hardening (least-privilege)
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths={{READ_WRITE_PATHS}}
+ProtectKernelTuneables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RemoveIPC=true
+PrivateTmp=true
+PrivateDevices=true
 
 [Install]
 WantedBy=multi-user.target
