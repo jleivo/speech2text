@@ -16,6 +16,7 @@ CONFIG_SCHEMA = {
         "transcription_log": {"type": "string"},
         "backend": {"type": "string"},
         "api_base": {"type": "string"},
+        "ca_bundle": {"type": "string"},
         "model": {"type": "string"},
         "default_action": {
             "type": "object",

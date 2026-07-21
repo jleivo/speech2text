@@ -5,6 +5,7 @@
     "transcription_log": "/srv/speech2text/speech2text.log",
     "backend": "litellm",
     "api_base": "http://litellm.intra.leivo:4000/v1",
+    "ca_bundle": "/etc/ssl/certs/ca-certificates.crt",
     "model": "whisper-large-v3-turbo-local",
     "vault_secret_path": "secret/hosts/<hostname>/litellm-speech2text",
     "vault_secret_key": "litellm_api",

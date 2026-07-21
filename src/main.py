@@ -65,6 +65,14 @@ def main(config_path="config/config.json"):
         os.environ["OPENAI_API_BASE"] = api_base
         logger.info("Using API base: %s", api_base)
 
+    # CA bundle for HTTPS connections (httpx/OpenAI SDK). Defaults to the
+    # system bundle, which should include the internal CA on managed hosts.
+    # Override via config if the internal CA lives elsewhere.
+    ca_bundle = config.get("ca_bundle", "/etc/ssl/certs/ca-certificates.crt")
+    os.environ["SSL_CERT_FILE"] = ca_bundle
+    os.environ["REQUESTS_CA_BUNDLE"] = ca_bundle
+    logger.info("Using CA bundle: %s", ca_bundle)
+
     vault_path = config.get("vault_secret_path")
     if vault_path:
         service = config.get("vault_service")
