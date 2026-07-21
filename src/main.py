@@ -59,6 +59,12 @@ def main(config_path="config/config.json"):
     # Validate script paths at startup (R2-m6, R3-M4)
     _validate_script_paths(config)
 
+    # Set API base from config (overrides any env var)
+    api_base = config.get("api_base")
+    if api_base:
+        os.environ["OPENAI_API_BASE"] = api_base
+        logger.info("Using API base: %s", api_base)
+
     vault_path = config.get("vault_secret_path")
     if vault_path:
         service = config.get("vault_service")

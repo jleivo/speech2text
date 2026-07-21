@@ -15,6 +15,7 @@ CONFIG_SCHEMA = {
         "delete_after_processing": {"type": "boolean"},
         "transcription_log": {"type": "string"},
         "backend": {"type": "string"},
+        "api_base": {"type": "string"},
         "model": {"type": "string"},
         "default_action": {
             "type": "object",
