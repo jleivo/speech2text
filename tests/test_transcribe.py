@@ -51,3 +51,29 @@ def test_transcribe_local_whisper_model_passed():
         transcribe_audio("/tmp/test.wav", backend="local", model="small")
 
     mock_load.assert_called_once_with("small")
+
+
+def test_transcribe_litellm_auto_prefixes_model():
+    """Model names without a provider prefix get 'openai/' prepended."""
+    mock_response = MagicMock()
+    mock_response.text = "prefixed"
+
+    with patch("builtins.open", MagicMock()):
+        with patch("src.transcribe.litellm.transcription", return_value=mock_response) as mock_transcribe:
+            transcribe_audio("/tmp/test.wav", backend="litellm", model="whisper-large-v3-turbo-local")
+
+    mock_transcribe.assert_called_once()
+    assert mock_transcribe.call_args[1]["model"] == "openai/whisper-large-v3-turbo-local"
+
+
+def test_transcribe_litellm_preserves_existing_prefix():
+    """Model names that already have a provider prefix are left unchanged."""
+    mock_response = MagicMock()
+    mock_response.text = "kept"
+
+    with patch("builtins.open", MagicMock()):
+        with patch("src.transcribe.litellm.transcription", return_value=mock_response) as mock_transcribe:
+            transcribe_audio("/tmp/test.wav", backend="litellm", model="openai/whisper-1")
+
+    mock_transcribe.assert_called_once()
+    assert mock_transcribe.call_args[1]["model"] == "openai/whisper-1"

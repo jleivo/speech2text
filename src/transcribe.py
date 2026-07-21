@@ -32,6 +32,11 @@ def transcribe_audio(file_path, backend="litellm", model="whisper-1"):
 
 
 def _transcribe_litellm(file_path, model):
+    # LiteLLM requires a provider prefix (e.g. "openai/model-name").
+    # When talking to an OpenAI-compatible endpoint (LiteLLM proxy),
+    # auto-prefix with "openai/" if no provider is specified.
+    if "/" not in model:
+        model = f"openai/{model}"
     with open(file_path, "rb") as audio_file:
         response = litellm.transcription(model=model, file=audio_file, timeout=60)
     return response.text
