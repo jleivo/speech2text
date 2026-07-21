@@ -67,7 +67,7 @@ def test_main_fetches_api_key_from_vault(mock_handler_class, mock_observer_class
         old_key = os.environ.get("OPENAI_API_KEY")
         main(config_path)
 
-        mock_fetch.assert_called_once_with("secret/hosts/myhost/litellm", "speech2text")
+        mock_fetch.assert_called_once_with("secret/hosts/myhost/litellm", "speech2text", "litellm_api")
         assert os.environ["OPENAI_API_KEY"] == "sk-vault-key-123"
         if old_key is not None:
             os.environ["OPENAI_API_KEY"] = old_key

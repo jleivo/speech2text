@@ -22,6 +22,7 @@ CONFIG_SCHEMA = {
             "required": ["script_path"],
         },
         "vault_secret_path": {"type": "string"},
+        "vault_secret_key": {"type": "string"},
         "vault_service": {
             "type": "string",
             "pattern": "^[a-zA-Z0-9_-]+$",

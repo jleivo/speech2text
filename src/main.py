@@ -62,10 +62,11 @@ def main(config_path="config/config.json"):
     vault_path = config.get("vault_secret_path")
     if vault_path:
         service = config.get("vault_service")
+        key = config.get("vault_secret_key", "litellm_api")
         try:
-            api_key = fetch_api_key(vault_path, service)
+            api_key = fetch_api_key(vault_path, service, key)
             os.environ["OPENAI_API_KEY"] = api_key
-            logger.info("Fetched API key from Vault (path=%s)", vault_path)
+            logger.info("Fetched API key from Vault (path=%s, key=%s)", vault_path, key)
         except Exception as e:
             logger.error("Failed to fetch API key from Vault: %s", e)
             raise SystemExit(1)

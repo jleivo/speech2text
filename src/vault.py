@@ -30,7 +30,7 @@ def vault_client(service=None):
     return client
 
 
-def fetch_api_key(vault_secret_path, service=None):
+def fetch_api_key(vault_secret_path, service=None, key="litellm_api"):
     client = vault_client(service=service)
     result = client.secrets.kv.v2.read_secret_version(path=vault_secret_path)
-    return result["data"]["data"]["value"]
+    return result["data"]["data"][key]

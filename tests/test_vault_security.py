@@ -72,7 +72,7 @@ def test_fetch_api_key_calls_vault_client_with_service():
         mock_client = MagicMock()
         mock_vc.return_value = mock_client
         mock_client.secrets.kv.v2.read_secret_version.return_value = {
-            "data": {"data": {"value": "sk-test"}}
+            "data": {"data": {"litellm_api": "sk-test"}}
         }
 
         fetch_api_key("secret/hosts/myhost/litellm", service="speech2text")
