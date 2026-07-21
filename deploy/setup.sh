@@ -112,6 +112,13 @@ else
 fi
 mv "$DEPLOY_DIR/src/main.py" "$DEPLOY_DIR/main.py"
 
+# 3a. Config: copy example only if no local config exists (preserves local edits)
+EXAMPLE_CONFIG="$DEPLOY_DIR/config/config.json.example"
+if [ ! -f "$CONFIG_PATH" ] && [ -f "$EXAMPLE_CONFIG" ]; then
+    echo "No config found — copying from example..."
+    cp "$EXAMPLE_CONFIG" "$CONFIG_PATH"
+fi
+
 # 4. Set ownership and permissions
 chown -R speech2text:speech2text "$DEPLOY_DIR"
 
