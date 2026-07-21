@@ -73,7 +73,7 @@ def test_process_audio_full_pipeline(mock_wait, mock_transcribe, mock_route):
     mock_transcribe.assert_called_once_with(
         "/tmp/audio/test.wav", backend="litellm", model="whisper-1"
     )
-    mock_route.assert_called_once_with("file my note", config)
+    mock_route.assert_called_once_with("file my note", config, source_file="/tmp/audio/test.wav")
 
 
 @patch("src.folder_watcher.os.remove")

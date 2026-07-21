@@ -87,7 +87,7 @@ class FolderWatcherHandler(FileSystemEventHandler):
         action = None
         success = False
         try:
-            action, success = route_transcription(transcription, self.config)
+            action, success = route_transcription(transcription, self.config, source_file=file_path)
         except Exception:
             logger.exception("Failed to route transcription for %s", file_path)
 
