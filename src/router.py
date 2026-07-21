@@ -28,7 +28,14 @@ def route_transcription(transcription, config):
         success = _run_script(config["default_action"]["script_path"], transcription)
         return ("default", success)
 
-    return (None, True)
+    # No magic word matched and no default_action configured.
+    # Report failure so the file is NOT deleted — nothing handled it (§164).
+    logger.warning(
+        "No action matched transcription (first word: %r) and no default_action "
+        "configured. File will be preserved.",
+        first_word,
+    )
+    return (None, False)
 
 
 def _run_script(script_path, text):

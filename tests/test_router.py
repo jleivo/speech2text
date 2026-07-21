@@ -74,7 +74,7 @@ def test_route_no_match_uses_default():
 
 
 def test_route_no_match_no_default():
-    """No match and no default action returns None."""
+    """No match and no default action returns (None, False) to preserve file."""
     config = {
         "magic_words": {
             "FILE": {"script_path": "/bin/handler.py"}
@@ -85,7 +85,7 @@ def test_route_no_match_no_default():
         result = route_transcription("hello world", config)
 
     mock_run.assert_not_called()
-    assert result == (None, True)
+    assert result == (None, False)
 
 
 def test_route_script_failure():

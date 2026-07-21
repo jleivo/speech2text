@@ -71,3 +71,21 @@ def test_delete_failure_does_not_crash_watcher():
          patch("src.folder_watcher.os.remove", side_effect=OSError("delete boom")):
         # Should not raise
         handler.process_audio_file("/tmp/audio/test.wav")
+
+
+def test_file_not_deleted_when_no_action_matched():
+    """File MUST NOT be deleted when no action handled the transcription.
+
+    Regression guard: route_transcription returns (None, False) when nothing
+    matched, so the file is preserved rather than silently destroyed (§164).
+    """
+    config = _make_config(delete_after_processing=True)
+    handler = FolderWatcherHandler(config)
+
+    with patch("src.folder_watcher._wait_for_file_stable", return_value=True), \
+         patch("src.folder_watcher.transcribe_audio", return_value="some unmatched words"), \
+         patch("src.folder_watcher.route_transcription", return_value=(None, False)), \
+         patch("src.folder_watcher.os.remove") as mock_remove:
+        handler.process_audio_file("/tmp/audio/test.wav")
+
+        mock_remove.assert_not_called()
