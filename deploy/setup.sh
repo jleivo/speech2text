@@ -98,10 +98,18 @@ echo "Setting up directories..."
 mkdir -p "$DEPLOY_DIR/audio_transfer"
 mkdir -p "$DEPLOY_DIR/config"
 
-# 3. Copy application files from repo root to deploy dir
+# 3. Deploy application files
 echo "Deploying application files..."
-rsync -av --exclude '.git' --exclude '.venv' --exclude '__pycache__' \
-    --exclude 'tests' --exclude 'docs' "$REPO_ROOT/" "$DEPLOY_DIR/"
+if [ "$REPO_ROOT" != "$DEPLOY_DIR" ]; then
+    # Copy from repo to deploy dir (only if they're different locations)
+    command -v rsync >/dev/null 2>&1 || { echo "ERROR: rsync is required but not installed" >&2; exit 1; }
+    rsync -av --exclude '.git' --exclude '.venv' --exclude '__pycache__' \
+        --exclude 'tests' --exclude 'docs' "$REPO_ROOT/" "$DEPLOY_DIR/"
+else
+    echo "Repo is already at $DEPLOY_DIR — skipping rsync"
+    # Clean excluded artifacts that may exist from git
+    find "$DEPLOY_DIR" -maxdepth 1 -name '__pycache__' -type d -exec rm -rf {} +
+fi
 mv "$DEPLOY_DIR/src/main.py" "$DEPLOY_DIR/main.py"
 
 # 4. Set ownership and permissions
