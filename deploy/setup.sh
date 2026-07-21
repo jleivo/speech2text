@@ -73,7 +73,7 @@ with open(sys.argv[3], 'w') as out:
 
 # --- Update-only mode ---
 
-if [ "$1" = "--update-service" ]; then
+if [ "${1:-}" = "--update-service" ]; then
     generate_service
     sudo systemctl restart speech2text.service
     echo ""
