@@ -63,6 +63,7 @@ def main(config_path="config/config.json"):
     if vault_path:
         service = config.get("vault_service")
         key = config.get("vault_secret_key", "litellm_api")
+        logger.info("Vault config: path=%s, service=%s, key=%s", vault_path, service, key)
         try:
             api_key = fetch_api_key(vault_path, service, key)
             os.environ["OPENAI_API_KEY"] = api_key
