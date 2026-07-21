@@ -110,7 +110,10 @@ else
     # Clean excluded artifacts that may exist from git
     find "$DEPLOY_DIR" -maxdepth 1 -name '__pycache__' -type d -exec rm -rf {} +
 fi
-mv "$DEPLOY_DIR/src/main.py" "$DEPLOY_DIR/main.py"
+# Move src/main.py to root only if it hasn't been moved already
+if [ -f "$DEPLOY_DIR/src/main.py" ] && [ ! -f "$DEPLOY_DIR/main.py" ]; then
+    mv "$DEPLOY_DIR/src/main.py" "$DEPLOY_DIR/main.py"
+fi
 
 # 3a. Config: copy example only if no local config exists (preserves local edits)
 EXAMPLE_CONFIG="$DEPLOY_DIR/config/config.json.example"
