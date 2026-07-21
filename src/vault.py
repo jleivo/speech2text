@@ -1,5 +1,7 @@
 import hvac
 
+_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt"
+
 
 def vault_client(service=None):
     base = f"/etc/vault/services/{service}" if service else "/etc/vault/host"
@@ -14,7 +16,7 @@ def vault_client(service=None):
 
     client = hvac.Client(
         url=url,
-        verify=True,
+        verify=_SYSTEM_CA_BUNDLE,
         timeout=10,
     )
 

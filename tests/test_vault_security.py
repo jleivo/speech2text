@@ -34,7 +34,7 @@ def test_vault_url_must_be_https():
 
 
 def test_vault_client_uses_verify_true():
-    """Vault client is created with verify=True (TLS verification)."""
+    """Vault client is created with verify pointing to system CA bundle."""
     file_contents = {
         "/etc/vault/vault_addr": "https://vault.example.com:8200\n",
         "/etc/vault/host/role_id": "role-123\n",
@@ -47,7 +47,7 @@ def test_vault_client_uses_verify_true():
 
     mock_client_class.assert_called_once()
     call_kwargs = mock_client_class.call_args[1]
-    assert call_kwargs["verify"] is True
+    assert call_kwargs["verify"] == "/etc/ssl/certs/ca-certificates.crt"
 
 
 def test_vault_client_has_timeout():

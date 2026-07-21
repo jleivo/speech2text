@@ -23,7 +23,9 @@ def test_vault_client_host_level(mock_client_class):
         result = vault_client()
 
     mock_client_class.assert_called_once_with(
-        url="https://vault.example.com:8200", verify=True, timeout=10
+        url="https://vault.example.com:8200",
+        verify="/etc/ssl/certs/ca-certificates.crt",
+        timeout=10,
     )
     mock_client.auth.approle.login.assert_called_once_with(
         role_id="host-role-123",
@@ -53,7 +55,9 @@ def test_vault_client_service_level(mock_client_class):
         result = vault_client(service="speech2text")
 
     mock_client_class.assert_called_once_with(
-        url="https://vault.example.com:8200", verify=True, timeout=10
+        url="https://vault.example.com:8200",
+        verify="/etc/ssl/certs/ca-certificates.crt",
+        timeout=10,
     )
     mock_client.auth.approle.login.assert_called_once_with(
         role_id="svc-role-789",
