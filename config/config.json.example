@@ -11,6 +11,9 @@
     "vault_secret_key": "litellm_api",
     "vault_service": "speech2text",
     "writable_paths": ["/srv/Obsidian/Inbox"],
+    "default_action": {
+        "script_path": "handlers/note_handler.py"
+    },
     "magic_words": {
         "NOTE": {
             "script_path": "handlers/note_handler.py"
