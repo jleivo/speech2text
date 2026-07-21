@@ -122,10 +122,8 @@ fi
 # 4. Set ownership and permissions
 chown -R speech2text:speech2text "$DEPLOY_DIR"
 
-# 4a. audio_transfer: group-owned with ACL for syncthing (no chmod 777)
-chown speech2text:speech2text "$DEPLOY_DIR/audio_transfer"
-chmod 750 "$DEPLOY_DIR/audio_transfer"
-setfacl -m u:syncthing:rwx "$DEPLOY_DIR/audio_transfer"
+# 4a. audio_transfer: open for syncthing (777)
+chmod 777 "$DEPLOY_DIR/audio_transfer"
 
 # 4b. Config file: restricted permissions (640)
 if [ -f "$CONFIG_PATH" ]; then
