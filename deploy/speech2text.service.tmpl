@@ -11,6 +11,7 @@ WorkingDirectory=/srv/speech2text
 Environment="OPENAI_API_BASE=https://litellm.intra.leivo"
 Environment="PATH=/srv/speech2text/.venv/bin:/usr/bin:/bin"
 Environment="HOME=/srv/speech2text"
+Environment="PYTHONPATH=/srv/speech2text"
 
 ExecStart=/srv/speech2text/.venv/bin/python3 /srv/speech2text/src/main.py
 
@@ -26,7 +27,6 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths={{READ_WRITE_PATHS}}
-ProtectKernelTuneables=true
 ProtectKernelModules=true
 ProtectKernelLogs=true
 ProtectControlGroups=true
