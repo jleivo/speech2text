@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -25,7 +26,12 @@ def transcribe_audio(file_path, backend="litellm", model="whisper-1"):
         try:
             return _transcribe_litellm(file_path, model)
         except Exception as e:
-            logger.warning("LiteLLM failed (%s), falling back to local Whisper", e)
+            logger.warning(
+                "LiteLLM transcription failed, falling back to local Whisper. "
+                "Error type: %s, Error: %s",
+                type(e).__name__, e,
+                exc_info=True,
+            )
             return _transcribe_local(file_path, model="turbo")
     else:
         return _transcribe_local(file_path, model)
@@ -37,6 +43,13 @@ def _transcribe_litellm(file_path, model):
     # auto-prefix with "openai/" if no provider is specified.
     if "/" not in model:
         model = f"openai/{model}"
+
+    api_base = os.environ.get("OPENAI_API_BASE", "(not set)")
+    logger.info(
+        "Transcribing via LiteLLM: file=%s, model=%s, api_base=%s",
+        file_path, model, api_base,
+    )
+
     with open(file_path, "rb") as audio_file:
         response = litellm.transcription(model=model, file=audio_file, timeout=60)
     return response.text
