@@ -20,6 +20,19 @@ import re
 import sys
 from datetime import datetime, timezone
 
+# Installer-facing self-description (see journal_handler.py for details).
+MANIFEST = {
+    "description": "Creates a uniquely-named markdown note in the Obsidian inbox",
+    "parameters": {
+        "destination": {
+            "description": "Directory where note files are created (created if missing)",
+            "required": True,
+            "default": "/srv/Obsidian/Inbox",
+            "type": "path",
+        }
+    },
+}
+
 # The Obsidian inbox directory where notes are created.
 # S2T_DESTINATION is set by the router from config.json ("destination" key).
 # S2T_NOTE_DIR is the legacy fallback. Override either for testing.
@@ -81,6 +94,7 @@ def _truncate_for_slug(text: str, max_words: int = 8) -> str:
 
 
 def main() -> int:
+    """Entry point: validate input, write a uniquely-named note file."""
     if len(sys.argv) < 2 or not sys.argv[1].strip():
         print("Error: no text provided. Usage: general_handler.py <text>")
         return 1

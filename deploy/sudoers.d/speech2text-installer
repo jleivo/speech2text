@@ -1,0 +1,29 @@
+# /etc/sudoers.d/speech2text-installer
+#
+# Passwordless sudo for the speech2text handler installer.
+# Grants the install user NOPASSWD for ONLY the specific commands the
+# installer needs — no wildcards, no shell escapes, no 'sudo su'.
+#
+# INSTALL:
+#   1. Replace 'jaxon' below with the actual install user.
+#   2. Validate:  sudo visudo -cf deploy/sudoers.d/speech2text-installer
+#   3. Install:   sudo cp deploy/sudoers.d/speech2text-installer /etc/sudoers.d/
+#   4. Set perms: sudo chmod 0440 /etc/sudoers.d/speech2text-installer
+#
+# SECURITY RATIONALE:
+#   - Each entry names an exact binary + exact arguments.  No glob
+#     wildcards, so the user cannot run arbitrary systemctl subcommands
+#     or pass extra flags that escape to a shell.
+#   - The helper script entry allows the installer to update the unit
+#     file's ReadWritePaths and reload/restart the service in one step.
+#     The script itself is a fixed, repo-controlled file — not a shell
+#     escape vector.
+#   - 'sudo su', 'sudo bash', 'sudo -i' etc. are NOT granted.
+
+# --- systemctl commands (exact arguments only) ---
+jaxon ALL=(root) NOPASSWD: /usr/bin/systemctl daemon-reload
+jaxon ALL=(root) NOPASSWD: /usr/bin/systemctl restart speech2text
+jaxon ALL=(root) NOPASSWD: /usr/bin/systemctl status speech2text
+
+# --- ReadWritePaths update helper (run as root so it can edit the unit) ---
+jaxon ALL=(root) NOPASSWD: /srv/speech2text/deploy/update_readwrite_paths.sh

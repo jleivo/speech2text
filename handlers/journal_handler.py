@@ -27,6 +27,23 @@ import os
 import sys
 from datetime import datetime
 
+# Installer-facing self-description. The installer (scripts/install_handler.py)
+# imports each handler and reads MANIFEST to discover parameters and their
+# types. A parameter of type "path" tells the installer the value must be
+# writable by the systemd service (needs a ReadWritePaths entry). Handlers
+# read their params from S2T_<KEY> env vars forwarded by the router.
+MANIFEST = {
+    "description": "Appends timestamped entries under the # Journal header in daily notes",
+    "parameters": {
+        "destination": {
+            "description": "Base directory for daily notes (YYYY/MM/YYYY-MM-DD.md underneath)",
+            "required": True,
+            "default": "/srv/Obsidian/Archives/dailynotes",
+            "type": "path",
+        }
+    },
+}
+
 JOURNAL_DIR: str = (
     os.environ.get("S2T_DESTINATION")
     or os.environ.get("S2T_JOURNAL_DIR")

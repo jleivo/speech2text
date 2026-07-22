@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# v1.0.0
 """Voice note handler for speech2text tool.
 
 Standalone script — no dependency on core tool modules.
@@ -17,6 +18,19 @@ Exit codes:
 import os
 import sys
 from datetime import datetime, timezone
+
+# Installer-facing self-description (see journal_handler.py for details).
+MANIFEST = {
+    "description": "Appends timestamped voice notes to Voice Notes.md in the Obsidian inbox",
+    "parameters": {
+        "destination": {
+            "description": "Directory containing Voice Notes.md (created if missing)",
+            "required": True,
+            "default": "/srv/Obsidian/Inbox",
+            "type": "path",
+        }
+    },
+}
 
 # The Obsidian inbox directory where Voice Notes.md lives.
 # S2T_DESTINATION is set by the router from config.json ("destination" key).
@@ -66,6 +80,7 @@ def _append_note(filepath: str, text: str) -> None:
 
 
 def main() -> int:
+    """Entry point: validate input, append the note to Voice Notes.md."""
     if len(sys.argv) < 2 or not sys.argv[1].strip():
         print("Error: no text provided. Usage: note_handler.py <text>")
         return 1

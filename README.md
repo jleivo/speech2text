@@ -70,6 +70,30 @@ text = sys.argv[1]  # "buy groceries" (magic word already stripped)
 - Scripts can be in any language, as long as they're executable
 - See `examples/` for sample scripts
 
+## Installing Handlers
+
+Handlers in `handlers/` declare a `MANIFEST` describing their parameters.
+The installer walks you through wiring one into `config.json` (interactive or
+flag-driven), validates the result, and optionally updates the systemd
+`ReadWritePaths` for handlers that write to disk.
+
+```bash
+# Interactive wizard
+python scripts/install_handler.py
+
+# Non-interactive
+python scripts/install_handler.py \
+    --handler journal_handler --word JOURNAL \
+    --param destination=/srv/Obsidian/Archives/dailynotes --yes
+
+# List handlers and installed words
+python scripts/install_handler.py --list
+```
+
+See `docs/installer-usage.md` for the full workflow and
+`docs/installer-setup.md` for the passwordless sudo setup the systemd step
+needs.
+
 ## Running
 
 ```bash
@@ -108,6 +132,9 @@ src/
   folder_watcher.py  # File system monitoring
   logger.py          # Transcription history logging
 examples/            # Example action scripts
+handlers/            # Built-in handlers (declare a MANIFEST for the installer)
+scripts/             # Tooling (install_handler.py)
+deploy/              # Deployment (systemd template, setup.sh, sudoers fragment)
 config/              # Configuration files
 tests/               # Unit and integration tests
 ```
