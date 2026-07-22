@@ -9,13 +9,25 @@ logger = logging.getLogger(__name__)
 _SENSITIVE_ENV_KEYS = frozenset({"OPENAI_API_KEY"})
 
 # Reserved config keys that are NOT forwarded to handlers as S2T_* env vars.
-# script_path selects the handler; everything else is a handler parameter.
-_RESERVED_CONFIG_KEYS = frozenset({"script_path"})
+# script_path selects the handler; aliases are router-level trigger words.
+_RESERVED_CONFIG_KEYS = frozenset({"script_path", "aliases"})
 
 
 def _sanitize_text(text):
     """Strip null bytes from transcription text before passing to subprocess (§201, R2-m3)."""
     return text.replace("\x00", "")
+
+
+def _matches(word_config, first_word):
+    """Return True if first_word matches the primary keyword or any alias.
+
+    Matching is case-insensitive. Aliases are read from the optional
+    "aliases" list in the magic-word config.
+    """
+    target = first_word.upper()
+    if target == word_config.get("_keyword", "").upper():
+        return True
+    return any(target == alias.upper() for alias in word_config.get("aliases", []))
 
 
 def route_transcription(transcription, config, source_file=None):
@@ -24,7 +36,10 @@ def route_transcription(transcription, config, source_file=None):
     remaining = words[1] if len(words) > 1 else ""
 
     for keyword, word_config in config["magic_words"].items():
-        if first_word.upper() == keyword.upper():
+        # Tag the primary keyword so _matches can compare against it without
+        # mutating the caller's config dict.
+        match_config = dict(word_config, _keyword=keyword)
+        if _matches(match_config, first_word):
             success = _run_script(word_config, remaining, source_file)
             return (keyword, success)
 

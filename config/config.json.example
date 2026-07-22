@@ -22,7 +22,8 @@
         },
         "PÄIVÄKIRJA": {
             "script_path": "handlers/journal_handler.py",
-            "destination": "/srv/Obsidian/Archives/dailynotes"
+            "destination": "/srv/Obsidian/Archives/dailynotes",
+            "aliases": ["JOURNAL", "PÄIVÄ"]
         },
         "FILE": {
             "script_path": "examples/create_note.py"

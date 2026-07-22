@@ -147,6 +147,37 @@ def test_magic_words_reject_non_string_params():
         load_config(config_path)
 
 
+def test_magic_words_accept_aliases_array():
+    """Magic word entries may carry an 'aliases' array of trigger words."""
+    config = {
+        "folder_to_watch": "/tmp/audio",
+        "magic_words": {
+            "WORK": {
+                "script_path": "/bin/work_tasks.py",
+                "aliases": ["KONE", "JOB"],
+            },
+        },
+    }
+    config_path = _write_config(config)
+
+    result = load_config(config_path)
+    assert result["magic_words"]["WORK"]["aliases"] == ["KONE", "JOB"]
+
+
+def test_magic_words_aliases_must_be_strings():
+    """Alias entries must be strings."""
+    config = {
+        "folder_to_watch": "/tmp/audio",
+        "magic_words": {
+            "WORK": {"script_path": "/bin/work_tasks.py", "aliases": [1, 2]},
+        },
+    }
+    config_path = _write_config(config)
+
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        load_config(config_path)
+
+
 def test_valid_absolute_paths_pass():
     """Valid absolute paths without '..' pass validation."""
     config = {

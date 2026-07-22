@@ -269,3 +269,71 @@ def test_route_default_action_forwards_params():
 
     env = mock_run.call_args[1]["env"]
     assert env["S2T_DESTINATION"] == "/srv/Obsidian/Inbox"
+
+
+def test_route_alias_triggers_same_handler():
+    """An alias triggers the same handler as the primary keyword."""
+    config = {
+        "magic_words": {
+            "WORK": {
+                "script_path": "/bin/work_tasks.py",
+                "email": "juha.leivo@kone.com",
+                "aliases": ["KONE"],
+            }
+        },
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        result = route_transcription("KONE do the thing", config)
+
+    # Reports the primary keyword, runs the same script with the same params
+    assert result == ("WORK", True)
+    assert mock_run.call_args[0][0][1] == "/bin/work_tasks.py"
+    assert mock_run.call_args[1]["env"]["S2T_EMAIL"] == "juha.leivo@kone.com"
+
+
+def test_route_alias_case_insensitive():
+    """Alias matching is case-insensitive."""
+    config = {
+        "magic_words": {
+            "WORK": {"script_path": "/bin/work_tasks.py", "aliases": ["KONE"]}
+        },
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        result = route_transcription("kone lowercase trigger", config)
+
+    assert result == ("WORK", True)
+
+
+def test_route_primary_keyword_still_matches_with_aliases():
+    """The primary keyword still matches when aliases are defined."""
+    config = {
+        "magic_words": {
+            "WORK": {"script_path": "/bin/work_tasks.py", "aliases": ["KONE"]}
+        },
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        result = route_transcription("WORK primary trigger", config)
+
+    assert result == ("WORK", True)
+
+
+def test_route_alias_not_forwarded_as_env():
+    """The aliases list is reserved and not forwarded as an S2T_ env var."""
+    config = {
+        "magic_words": {
+            "WORK": {"script_path": "/bin/work_tasks.py", "aliases": ["KONE"]}
+        },
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        route_transcription("KONE trigger", config)
+
+    env = mock_run.call_args[1]["env"]
+    assert "S2T_ALIASES" not in env

@@ -39,7 +39,13 @@ CONFIG_SCHEMA = {
             "patternProperties": {
                 "^[\\w]+$": {
                     "type": "object",
-                    "properties": {"script_path": {"type": "string"}},
+                    "properties": {
+                        "script_path": {"type": "string"},
+                        "aliases": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                    },
                     "required": ["script_path"],
                     "additionalProperties": {"type": "string"},
                 }
