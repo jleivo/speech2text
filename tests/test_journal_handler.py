@@ -297,3 +297,38 @@ class TestJournalHandlerEdgeCases:
         with open(filepath, encoding="utf-8") as fh:
             content = fh.read()
         assert long_text.strip() in content
+
+
+class TestJournalHandlerConfigDrivenDestination:
+    """The router passes the config 'destination' key as S2T_DESTINATION."""
+
+    def setup_method(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def teardown_method(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _run_with_destination(self, text, destination):
+        cmd = [sys.executable, SCRIPT, text]
+        env = os.environ.copy()
+        env["S2T_DESTINATION"] = destination
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+        return result.stdout.strip(), result.returncode
+
+    def test_s2t_destination_env_var_used(self):
+        """S2T_DESTINATION (config-driven) selects the base directory."""
+        _create_daily_note(self.tmpdir)
+        stdout, rc = self._run_with_destination("config driven entry", self.tmpdir)
+        assert rc == 0
+        assert self.tmpdir in stdout
+
+    def test_s2t_destination_takes_precedence_over_legacy(self):
+        """S2T_DESTINATION wins over the legacy S2T_JOURNAL_DIR when both set."""
+        _create_daily_note(self.tmpdir)
+        cmd = [sys.executable, SCRIPT, "precedence entry"]
+        env = os.environ.copy()
+        env["S2T_DESTINATION"] = self.tmpdir
+        env["S2T_JOURNAL_DIR"] = "/nonexistent/legacy/path"
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+        assert result.returncode == 0
+        assert self.tmpdir in result.stdout

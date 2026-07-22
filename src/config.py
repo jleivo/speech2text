@@ -22,6 +22,7 @@ CONFIG_SCHEMA = {
             "type": "object",
             "properties": {"script_path": {"type": "string"}},
             "required": ["script_path"],
+            "additionalProperties": {"type": "string"},
         },
         "vault_secret_path": {"type": "string"},
         "vault_secret_key": {"type": "string"},
@@ -36,10 +37,11 @@ CONFIG_SCHEMA = {
         "magic_words": {
             "type": "object",
             "patternProperties": {
-                "^[A-Z]+$": {
+                "^[\\w]+$": {
                     "type": "object",
                     "properties": {"script_path": {"type": "string"}},
                     "required": ["script_path"],
+                    "additionalProperties": {"type": "string"},
                 }
             },
             "additionalProperties": False,

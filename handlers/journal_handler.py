@@ -11,9 +11,11 @@ Daily note path: <base_dir>/YYYY/MM/YYYY-MM-DD.md
 Usage:
     python journal_handler.py "<transcription text>"
 
-Environment:
-    S2T_JOURNAL_DIR  Base directory for daily notes
-                     (default: /srv/Obsidian/Archives/dailynotes)
+Environment (set by the router from config.json):
+    S2T_DESTINATION  Base directory for daily notes. Configured per
+                     magic-word in config.json as "destination".
+    S2T_JOURNAL_DIR  Legacy fallback for the base directory.
+    Default: /srv/Obsidian/Archives/dailynotes
 
 Exit codes:
     0  success
@@ -25,8 +27,10 @@ import os
 import sys
 from datetime import datetime
 
-JOURNAL_DIR: str = os.environ.get(
-    "S2T_JOURNAL_DIR", "/srv/Obsidian/Archives/dailynotes"
+JOURNAL_DIR: str = (
+    os.environ.get("S2T_DESTINATION")
+    or os.environ.get("S2T_JOURNAL_DIR")
+    or "/srv/Obsidian/Archives/dailynotes"
 )
 
 JOURNAL_HEADER = "# Journal"

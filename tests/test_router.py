@@ -193,3 +193,79 @@ def test_route_subprocess_timeout():
         route_transcription("file test", config)
 
     assert mock_run.call_args[1]["timeout"] == 30
+
+
+def test_route_forwards_extra_config_as_env():
+    """Extra magic-word config keys are forwarded as S2T_<KEY> env vars."""
+    config = {
+        "magic_words": {
+            "PÄIVÄKIRJA": {
+                "script_path": "/bin/journal.py",
+                "destination": "/srv/Obsidian/Archives/dailynotes",
+            }
+        },
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        route_transcription("PÄIVÄKIRJA päivä alkoi", config)
+
+    env = mock_run.call_args[1]["env"]
+    assert env["S2T_DESTINATION"] == "/srv/Obsidian/Archives/dailynotes"
+    # script_path must NOT be forwarded as an env var
+    assert "S2T_SCRIPT_PATH" not in env
+
+
+def test_route_forwards_multiple_params():
+    """All non-reserved config keys are forwarded, e.g. email for a task handler."""
+    config = {
+        "magic_words": {
+            "WORK": {
+                "script_path": "/bin/work_tasks.py",
+                "email": "juha.leivo@kone.com",
+                "priority": "high",
+            }
+        },
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        route_transcription("WORK do the thing", config)
+
+    env = mock_run.call_args[1]["env"]
+    assert env["S2T_EMAIL"] == "juha.leivo@kone.com"
+    assert env["S2T_PRIORITY"] == "high"
+
+
+def test_route_unicode_magic_word_matches():
+    """Unicode magic words (e.g. Finnish PÄIVÄKIRJA) match correctly."""
+    config = {
+        "magic_words": {
+            "PÄIVÄKIRJA": {"script_path": "/bin/journal.py"}
+        },
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        result = route_transcription("PÄIVÄKIRJA päivä alkoi hyvin", config)
+
+    assert result == ("PÄIVÄKIRJA", True)
+    assert mock_run.call_args[0][0][2] == "päivä alkoi hyvin"
+
+
+def test_route_default_action_forwards_params():
+    """default_action config keys are also forwarded as S2T_<KEY> env vars."""
+    config = {
+        "magic_words": {"FILE": {"script_path": "/bin/handler.py"}},
+        "default_action": {
+            "script_path": "/bin/default.py",
+            "destination": "/srv/Obsidian/Inbox",
+        },
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        route_transcription("no match here", config)
+
+    env = mock_run.call_args[1]["env"]
+    assert env["S2T_DESTINATION"] == "/srv/Obsidian/Inbox"

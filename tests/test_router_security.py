@@ -32,7 +32,7 @@ def test_run_script_uses_sys_executable():
     """_run_script uses sys.executable, not 'python'."""
     with patch("src.router.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
-        _run_script("/bin/handler.py", "test text")
+        _run_script({"script_path": "/bin/handler.py"}, "test text")
 
     args = mock_run.call_args[0][0]
     assert args[0] == sys.executable
@@ -45,7 +45,7 @@ def test_run_script_excludes_sensitive_env():
     try:
         with patch("src.router.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
-            _run_script("/bin/handler.py", "test")
+            _run_script({"script_path": "/bin/handler.py"}, "test")
 
         env = mock_run.call_args[1]["env"]
         assert "OPENAI_API_KEY" not in env
@@ -57,7 +57,7 @@ def test_run_script_has_timeout_30():
     """subprocess.run is called with timeout=30."""
     with patch("src.router.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
-        _run_script("/bin/handler.py", "test")
+        _run_script({"script_path": "/bin/handler.py"}, "test")
 
     assert mock_run.call_args[1]["timeout"] == 30
 
@@ -66,7 +66,7 @@ def test_run_script_sanitizes_null_bytes_in_text():
     """Null bytes are stripped before passing text to subprocess."""
     with patch("src.router.subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
-        _run_script("/bin/handler.py", "text\x00with\x00nulls")
+        _run_script({"script_path": "/bin/handler.py"}, "text\x00with\x00nulls")
 
     text_arg = mock_run.call_args[0][0][2]
     assert "\x00" not in text_arg

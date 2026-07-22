@@ -19,8 +19,13 @@ import sys
 from datetime import datetime, timezone
 
 # The Obsidian inbox directory where Voice Notes.md lives.
-# Override via S2T_NOTE_DIR environment variable (useful for testing).
-NOTE_DIR: str = os.environ.get("S2T_NOTE_DIR", "/srv/Obsidian/Inbox")
+# S2T_DESTINATION is set by the router from config.json ("destination" key).
+# S2T_NOTE_DIR is the legacy fallback. Override either for testing.
+NOTE_DIR: str = (
+    os.environ.get("S2T_DESTINATION")
+    or os.environ.get("S2T_NOTE_DIR")
+    or "/srv/Obsidian/Inbox"
+)
 NOTE_FILE: str = "Voice Notes.md"
 
 # Frontmatter written once when the file is created.

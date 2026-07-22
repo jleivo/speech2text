@@ -96,13 +96,49 @@ def test_vault_service_pattern_accepts_valid():
     assert result["vault_service"] == "speech2text_svc-1"
 
 
-def test_magic_words_pattern_rejects_lowercase_keys():
-    """Magic word keys must match ^[A-Z]+$ — rejects lowercase."""
+def test_magic_words_pattern_accepts_unicode_keys():
+    """Magic word keys may contain Unicode letters (e.g. Finnish PÄIVÄKIRJA)."""
     config = {
         "folder_to_watch": "/tmp/audio",
         "magic_words": {
-            "FILE": {"script_path": "/bin/handler.py"},
-            "lowercase": {"script_path": "/bin/handler.py"},
+            "PÄIVÄKIRJA": {"script_path": "/bin/journal.py"},
+        },
+    }
+    config_path = _write_config(config)
+
+    result = load_config(config_path)
+    assert "PÄIVÄKIRJA" in result["magic_words"]
+
+
+def test_magic_words_accept_handler_params():
+    """Magic word entries may carry extra handler parameters (string values)."""
+    config = {
+        "folder_to_watch": "/tmp/audio",
+        "magic_words": {
+            "PÄIVÄKIRJA": {
+                "script_path": "/bin/journal.py",
+                "destination": "/srv/Obsidian/Archives/dailynotes",
+            },
+            "WORK": {
+                "script_path": "/bin/work_tasks.py",
+                "email": "juha.leivo@kone.com",
+            },
+        },
+    }
+    config_path = _write_config(config)
+
+    result = load_config(config_path)
+    assert result["magic_words"]["PÄIVÄKIRJA"]["destination"] == \
+        "/srv/Obsidian/Archives/dailynotes"
+    assert result["magic_words"]["WORK"]["email"] == "juha.leivo@kone.com"
+
+
+def test_magic_words_reject_non_string_params():
+    """Handler parameter values must be strings."""
+    config = {
+        "folder_to_watch": "/tmp/audio",
+        "magic_words": {
+            "FILE": {"script_path": "/bin/handler.py", "count": 5},
         },
     }
     config_path = _write_config(config)
