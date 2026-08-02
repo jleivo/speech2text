@@ -1,0 +1,75 @@
+# speech2text CI/CD — Gitea Actions
+# Runs on the Act Runner (tucgitrunp01, CT 128)
+#
+# Triggers:
+#   - Push to any branch: lint + test (fast feedback)
+#   - Push to main (merge): lint + test + deploy to tucspeechp01
+#
+# Required Gitea Actions secrets (repo Settings → Secrets):
+#   DEPLOY_SSH_KEY  — SSH private key for jaxon@tucspeechp01.intra.leivo
+#   DEPLOY_HOST     — tucspeechp01.intra.leivo (or 192.168.8.126)
+
+name: CI/CD
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # CPU-only torch (conftest mocks whisper/torch anyway)
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+          pip install pylint
+
+      - name: Pylint — handlers
+        run: |
+          pylint handlers/ --disable=R0801 --fail-under=8.0 || true
+
+      - name: Pylint — src
+        run: |
+          pylint src/ --disable=R0801 --fail-under=8.0 || true
+
+      - name: Run tests
+        run: |
+          python -m pytest tests/ -v --tb=short -x
+
+  deploy:
+    needs: lint-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to tucspeechp01
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: jaxon
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /srv/speech2text
+            echo "=== Pulling latest from Gitea ==="
+            sudo -u speech2text git pull origin main
+            echo "=== Updating dependencies ==="
+            sudo -u speech2text /srv/speech2text/.venv/bin/pip install -r requirements.txt --upgrade --quiet
+            echo "=== Restarting service ==="
+            sudo systemctl restart speech2text.service
+            sleep 3
+            echo "=== Verifying ==="
+            systemctl is-active speech2text.service
+            echo "=== Deploy complete ==="
