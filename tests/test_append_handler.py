@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 
 SCRIPT = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),
@@ -369,6 +369,160 @@ class TestTemplate:
             os.path.join(self.tmpdir, "plain.md"), encoding="utf-8"
         ) as fh:
             assert fh.read() == "Just text\n"
+
+
+class TestTemplater:
+    """Safe Templater tags are expanded headlessly."""
+
+    def setup_method(self):
+        """Create temp dirs for output and templates."""
+        self.tmpdir = tempfile.mkdtemp()  # pylint: disable=attribute-defined-outside-init
+        self.tmpldir = tempfile.mkdtemp()  # pylint: disable=attribute-defined-outside-init
+
+    def teardown_method(self):
+        """Remove temp directories."""
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+        shutil.rmtree(self.tmpldir, ignore_errors=True)
+
+    def _write_template(self, name, content):
+        """Write a template file and return its absolute path."""
+        path = os.path.join(self.tmpldir, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        return path
+
+    def _run_with_template(self, tmpl_content, text="Entry"):
+        """Write a template, run the handler, return file content."""
+        tmpl = self._write_template("t.md", tmpl_content)
+        env = {
+            "S2T_DESTINATION": self.tmpdir,
+            "S2T_FILENAME": "t.md",
+            "S2T_TEMPLATE": tmpl,
+        }
+        _, rc = _run(text=text, env_override=env)
+        assert rc == 0
+        with open(
+            os.path.join(self.tmpdir, "t.md"), encoding="utf-8"
+        ) as fh:
+            return fh.read()
+
+    def test_date_now_basic(self):
+        """tp.date.now("YYYY-MM-DD") expands to today's date."""
+        content = self._run_with_template(
+            '# <% tp.date.now("YYYY-MM-DD") %>\n\n'
+        )
+        today = datetime.now().strftime("%Y-%m-%d")
+        assert content == f"# {today}\n\nEntry\n"
+
+    def test_date_now_long_format(self):
+        """Moment long formats (dddd, MMMM, Do) are converted."""
+        content = self._run_with_template(
+            '# <% tp.date.now("dddd, MMMM Do YYYY") %>\n\n'
+        )
+        now = datetime.now()
+        expected_date = now.strftime("%A, %B")
+        # Ordinal day
+        day = now.day
+        if 11 <= day <= 13:
+            ordinal = f"{day}th"
+        else:
+            ordinal = f"{day}" + {1: "st", 2: "nd", 3: "rd"}.get(
+                day % 10, "th"
+            )
+        expected = f"# {expected_date} {ordinal} {now.year}\n\nEntry\n"
+        assert content == expected
+
+    def test_date_now_with_offset(self):
+        """tp.date.now("YYYY-MM-DD", 1) expands to tomorrow."""
+        content = self._run_with_template(
+            '<% tp.date.now("YYYY-MM-DD", 1) %>\n'
+        )
+        tomorrow = (
+            datetime.now() + timedelta(days=1)
+        ).strftime("%Y-%m-%d")
+        assert content == f"{tomorrow}\nEntry\n"
+
+    def test_file_title(self):
+        """tp.file.title expands to the filename without extension."""
+        tmpl = self._write_template("t.md", "# <% tp.file.title %>\n")
+        env = {
+            "S2T_DESTINATION": self.tmpdir,
+            "S2T_FILENAME": "blogi-2026-08-02.md",
+            "S2T_TEMPLATE": tmpl,
+        }
+        _, rc = _run(text="Entry", env_override=env)
+        assert rc == 0
+        with open(
+            os.path.join(self.tmpdir, "blogi-2026-08-02.md"),
+            encoding="utf-8",
+        ) as fh:
+            content = fh.read()
+        assert content == "# blogi-2026-08-02\nEntry\n"
+
+    def test_creation_date(self):
+        """tp.file.creation_date(...) expands to now."""
+        content = self._run_with_template(
+            'created: <% tp.file.creation_date("YYYY-MM-DD") %>\n'
+        )
+        today = datetime.now().strftime("%Y-%m-%d")
+        assert content == f"created: {today}\nEntry\n"
+
+    def test_unsafe_tag_left_intact(self):
+        """Interactive tags are NOT expanded (left for Obsidian)."""
+        content = self._run_with_template(
+            "# Title\n\n<% tp.system.prompt('Name?') %>\n"
+        )
+        assert "<% tp.system.prompt('Name?') %>" in content
+        assert "Entry" in content
+
+    def test_mixed_safe_and_unsafe(self):
+        """Safe tags expand, unsafe tags survive in the same file."""
+        content = self._run_with_template(
+            '# <% tp.date.now("YYYY") %>\n'
+            "<% tp.file.cursor(1) %>\n"
+        )
+        year = datetime.now().strftime("%Y")
+        assert f"# {year}" in content
+        assert "<% tp.file.cursor(1) %>" in content
+
+    def test_bare_tokens_outside_tags(self):
+        """Handler tokens expand in text outside Templater tags."""
+        content = self._run_with_template(
+            "# YYYY-MM-DD\n<% tp.file.cursor(1) %>\n"
+        )
+        today = datetime.now().strftime("%Y-%m-%d")
+        assert content.startswith(f"# {today}\n")
+        # The cursor tag must NOT have its content mangled
+        assert "<% tp.file.cursor(1) %>" in content
+
+    def test_literal_brackets_in_moment(self):
+        """[literal] blocks in Moment formats pass through."""
+        content = self._run_with_template(
+            '<% tp.date.now("[Week] WW [of] YYYY") %>\n'
+        )
+        now = datetime.now()
+        expected = f"Week {now.strftime('%W')} of {now.year}\nEntry\n"
+        assert content == expected
+
+    def test_existing_templater_template_reuse(self):
+        """A realistic existing Templater daily-note template works."""
+        tmpl_content = (
+            "---\n"
+            "created: <% tp.file.creation_date('YYYY-MM-DD') %>\n"
+            "tags: [daily]\n"
+            "---\n"
+            "# <% tp.date.now('dddd, MMMM Do YYYY') %>\n\n"
+            "## Journal\n\n"
+        )
+        content = self._run_with_template(tmpl_content)
+        now = datetime.now()
+        today = now.strftime("%Y-%m-%d")
+        assert f"created: {today}" in content
+        assert "tags: [daily]" in content
+        assert "## Journal" in content
+        assert "Entry" in content
+        # No raw Templater tags should remain
+        assert "<%" not in content
 
 
 class TestConfigPrecedence:
