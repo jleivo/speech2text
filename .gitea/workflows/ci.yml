@@ -1,5 +1,8 @@
-# speech2text CI/CD — Gitea Actions
+# speech2text CI/CD — Gitea Actions (air-gapped)
 # Runs on the Act Runner (tucgitrunp01, CT 128)
+#
+# No external actions (actions/checkout, actions/setup-python) —
+# the runner has no internet access. Uses git clone + system Python.
 #
 # Triggers:
 #   - Push to any branch: lint + test (fast feedback)
@@ -7,7 +10,7 @@
 #
 # Required Gitea Actions secrets (repo Settings → Secrets):
 #   DEPLOY_SSH_KEY  — SSH private key for jaxon@tucspeechp01.intra.leivo
-#   DEPLOY_HOST     — tucspeechp01.intra.leivo (or 192.168.8.126)
+#   DEPLOY_HOST     — 192.168.8.126 (tucspeechp01)
 
 name: CI/CD
 
@@ -22,20 +25,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+        run: |
+          git clone --depth 1 --branch "${GITHUB_REF_NAME}" \
+            "https://gitea.intra.leivo/fletcher/speech2text.git" .
+          echo "Cloned: $(git log --oneline -1)"
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          python3 -m pip install --upgrade pip --quiet
           # CPU-only torch (conftest mocks whisper/torch anyway)
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -r requirements.txt
-          pip install pylint
+          pip install torch --index-url https://download.pytorch.org/whl/cpu --quiet
+          pip install -r requirements.txt --quiet
+          pip install pylint --quiet
 
       - name: Pylint — handlers
         run: |
@@ -47,7 +48,7 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m pytest tests/ -v --tb=short -x
+          python3 -m pytest tests/ -v --tb=short -x
 
   deploy:
     needs: lint-and-test
@@ -55,21 +56,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to tucspeechp01
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: jaxon
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd /srv/speech2text
-            echo "=== Pulling latest from Gitea ==="
-            sudo -u speech2text git pull origin main
-            echo "=== Updating dependencies ==="
-            sudo -u speech2text /srv/speech2text/.venv/bin/pip install -r requirements.txt --upgrade --quiet
-            echo "=== Restarting service ==="
-            sudo systemctl restart speech2text.service
-            sleep 3
-            echo "=== Verifying ==="
-            systemctl is-active speech2text.service
-            echo "=== Deploy complete ==="
+        run: |
+          # Write deploy key from secrets
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key \
+            jaxon@${{ secrets.DEPLOY_HOST }} << 'DEPLOY_EOF'
+          set -euo pipefail
+          cd /srv/speech2text
+          echo "=== Pulling latest from Gitea ==="
+          sudo -u speech2text git pull origin main
+          echo "=== Updating dependencies ==="
+          sudo -u speech2text /srv/speech2text/.venv/bin/pip install -r requirements.txt --upgrade --quiet
+          echo "=== Restarting service ==="
+          sudo systemctl restart speech2text.service
+          sleep 3
+          echo "=== Verifying ==="
+          systemctl is-active speech2text.service
+          echo "=== Deploy complete ==="
+          DEPLOY_EOF
