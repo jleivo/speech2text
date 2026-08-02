@@ -28,14 +28,11 @@ jobs:
         env:
           GITEA_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CLONE_URL="https://gitea.intra.leivo/fletcher/speech2text.git"
-          if ! getent hosts gitea.intra.leivo >/dev/null 2>&1; then
-            echo "DNS unavailable — using IP"
-            CLONE_URL="https://192.168.8.119/fletcher/speech2text.git"
-          fi
+          # Runner resolves gitea.intra.leivo -> 127.0.0.1 (same host).
+          # Authenticated clone for the private repo; self-signed cert -> skip verify.
           git -c http.sslVerify=false clone --depth 1 \
             --branch "${GITHUB_REF_NAME}" \
-            "https://x-access-token:${GITE...//}" .
+            "https://x-access-token:${GITEA_TOKEN}@gitea.intra.leivo/fletcher/speech2text.git" .
           echo "Cloned: $(git log --oneline -1)"
 
       - name: Install dependencies
