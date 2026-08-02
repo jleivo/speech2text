@@ -42,6 +42,13 @@
         },
         "APPEND": {
             "script_path": "examples/append_log.py"
+        },
+        "KAUPPALISTA": {
+            "script_path": "handlers/gdocs_handler.py",
+            "document_id": "<google-doc-id>",
+            "header": "KAUPPA",
+            "credentials": "/srv/speech2text/secrets/gdocs-sa.json",
+            "aliases": ["SHOPPING", "OSTOKSET"]
         }
     }
 }
