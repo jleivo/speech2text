@@ -86,16 +86,23 @@ class FolderWatcherHandler(FileSystemEventHandler):
         # route_transcription in its own try/except (§162, R2-C4, M3)
         action = None
         success = False
+        error = None
         try:
-            action, success = route_transcription(transcription, self.config, source_file=file_path)
+            action, success, error = route_transcription(
+                transcription, self.config, source_file=file_path
+            )
         except Exception:
             logger.exception("Failed to route transcription for %s", file_path)
+            error = "router raised an unexpected exception"
 
         # log_transcription in its own try/except (§162, R2-C5, M3)
         log_path = self.config.get("transcription_log")
         if log_path:
             try:
-                log_transcription(log_path, file_path, transcription, action, success)
+                log_transcription(
+                    log_path, file_path, transcription, action, success,
+                    error=error,
+                )
             except Exception:
                 logger.exception("Failed to log transcription for %s", file_path)
 

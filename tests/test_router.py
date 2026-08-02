@@ -25,7 +25,7 @@ def test_route_matches_first_word():
     assert call_args[1]["timeout"] == 30
     # env should not contain OPENAI_API_KEY
     assert "OPENAI_API_KEY" not in call_args[1]["env"]
-    assert result == ("FILE", True)
+    assert result == ("FILE", True, None)
 
 
 def test_route_case_insensitive():
@@ -47,7 +47,7 @@ def test_route_case_insensitive():
     assert call_args[1]["check"] is False
     assert call_args[1]["timeout"] == 30
     assert "OPENAI_API_KEY" not in call_args[1]["env"]
-    assert result == ("FILE", True)
+    assert result == ("FILE", True, None)
 
 
 def test_route_no_match_uses_default():
@@ -70,7 +70,7 @@ def test_route_no_match_uses_default():
     assert call_args[1]["check"] is False
     assert call_args[1]["timeout"] == 30
     assert "OPENAI_API_KEY" not in call_args[1]["env"]
-    assert result == ("default", True)
+    assert result == ("default", True, None)
 
 
 def test_route_no_match_no_default():
@@ -85,22 +85,135 @@ def test_route_no_match_no_default():
         result = route_transcription("hello world", config)
 
     mock_run.assert_not_called()
-    assert result == (None, False)
+    assert result[0] is None
+    assert result[1] is False
+    assert "no default_action" in result[2]
 
 
 def test_route_script_failure():
-    """Script returning non-zero exit code reports failure."""
+    """Script returning non-zero exit code reports failure with the error."""
     config = {
         "magic_words": {
             "FILE": {"script_path": "/bin/handler.py"}
         },
+        # Disable fallback so we observe the primary failure directly.
+        "fallback_on_failure": False,
     }
 
     with patch("src.router.subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(returncode=1)
+        mock_run.return_value = MagicMock(
+            returncode=2, stderr="Error: daily note not found", stdout=""
+        )
         result = route_transcription("file my note", config)
 
-    assert result == ("FILE", False)
+    action, success, error = result
+    assert action == "FILE"
+    assert success is False
+    assert "exit code 2" in error
+    assert "daily note not found" in error
+
+
+def test_route_script_failure_captures_stdout_when_no_stderr():
+    """Handlers that print errors to stdout still surface the reason."""
+    config = {
+        "magic_words": {"FILE": {"script_path": "/bin/handler.py"}},
+        "fallback_on_failure": False,
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=1, stderr="", stdout="Error: permission denied"
+        )
+        _, success, error = route_transcription("file my note", config)
+
+    assert success is False
+    assert "permission denied" in error
+
+
+def test_route_fallback_on_handler_failure():
+    """A failed magic-word handler falls back to default_action by default."""
+    config = {
+        "magic_words": {"WORK": {"script_path": "/bin/work.py"}},
+        "default_action": {"script_path": "/bin/default.py"},
+    }
+
+    # First call (WORK handler) fails, second call (default) succeeds.
+    fail = MagicMock(returncode=2, stderr="boom", stdout="")
+    ok = MagicMock(returncode=0, stderr="", stdout="")
+    with patch("src.router.subprocess.run", side_effect=[fail, ok]) as mock_run:
+        action, success, error = route_transcription("WORK do thing", config)
+
+    assert action == "WORK+fallback"
+    assert success is True
+    assert "recovered via default_action" in error
+    assert mock_run.call_count == 2
+
+
+def test_route_fallback_disabled_preserves_failure():
+    """With fallback_on_failure=False, a handler failure is returned as-is."""
+    config = {
+        "magic_words": {"WORK": {"script_path": "/bin/work.py"}},
+        "default_action": {"script_path": "/bin/default.py"},
+        "fallback_on_failure": False,
+    }
+
+    fail = MagicMock(returncode=2, stderr="boom", stdout="")
+    with patch("src.router.subprocess.run", side_effect=[fail]) as mock_run:
+        action, success, error = route_transcription("WORK do thing", config)
+
+    assert action == "WORK"
+    assert success is False
+    assert "boom" in error
+    assert mock_run.call_count == 1  # no fallback attempted
+
+
+def test_route_fallback_no_default_configured():
+    """Handler failure with no default_action returns the primary failure."""
+    config = {
+        "magic_words": {"WORK": {"script_path": "/bin/work.py"}},
+    }
+
+    fail = MagicMock(returncode=2, stderr="boom", stdout="")
+    with patch("src.router.subprocess.run", side_effect=[fail]) as mock_run:
+        action, success, error = route_transcription("WORK do thing", config)
+
+    assert action == "WORK"
+    assert success is False
+    assert "boom" in error
+    assert mock_run.call_count == 1
+
+
+def test_route_fallback_also_fails():
+    """When both primary and fallback fail, both errors are reported."""
+    config = {
+        "magic_words": {"WORK": {"script_path": "/bin/work.py"}},
+        "default_action": {"script_path": "/bin/default.py"},
+    }
+
+    fail1 = MagicMock(returncode=2, stderr="primary boom", stdout="")
+    fail2 = MagicMock(returncode=3, stderr="fallback boom", stdout="")
+    with patch("src.router.subprocess.run", side_effect=[fail1, fail2]):
+        action, success, error = route_transcription("WORK do thing", config)
+
+    assert action == "WORK+fallback"
+    assert success is False
+    assert "primary boom" in error
+    assert "fallback boom" in error
+
+
+def test_route_handler_timeout_reports_error():
+    """A handler that exceeds the timeout reports a timeout error."""
+    config = {
+        "magic_words": {"WORK": {"script_path": "/bin/work.py"}},
+        "fallback_on_failure": False,
+    }
+
+    with patch("src.router.subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 30)):
+        action, success, error = route_transcription("WORK do thing", config)
+
+    assert action == "WORK"
+    assert success is False
+    assert "timed out" in error
 
 
 def test_route_strips_only_first_word():
@@ -249,7 +362,7 @@ def test_route_unicode_magic_word_matches():
         mock_run.return_value = MagicMock(returncode=0)
         result = route_transcription("PÄIVÄKIRJA päivä alkoi hyvin", config)
 
-    assert result == ("PÄIVÄKIRJA", True)
+    assert result == ("PÄIVÄKIRJA", True, None)
     assert mock_run.call_args[0][0][2] == "päivä alkoi hyvin"
 
 
@@ -288,7 +401,7 @@ def test_route_alias_triggers_same_handler():
         result = route_transcription("KONE do the thing", config)
 
     # Reports the primary keyword, runs the same script with the same params
-    assert result == ("WORK", True)
+    assert result == ("WORK", True, None)
     assert mock_run.call_args[0][0][1] == "/bin/work_tasks.py"
     assert mock_run.call_args[1]["env"]["S2T_EMAIL"] == "juha.leivo@kone.com"
 
@@ -305,7 +418,7 @@ def test_route_alias_case_insensitive():
         mock_run.return_value = MagicMock(returncode=0)
         result = route_transcription("kone lowercase trigger", config)
 
-    assert result == ("WORK", True)
+    assert result == ("WORK", True, None)
 
 
 def test_route_primary_keyword_still_matches_with_aliases():
@@ -320,7 +433,7 @@ def test_route_primary_keyword_still_matches_with_aliases():
         mock_run.return_value = MagicMock(returncode=0)
         result = route_transcription("WORK primary trigger", config)
 
-    assert result == ("WORK", True)
+    assert result == ("WORK", True, None)
 
 
 def test_route_alias_not_forwarded_as_env():
@@ -359,7 +472,7 @@ def test_route_trigger_with_trailing_period():
         mock_run.return_value = MagicMock(returncode=0)
         result = route_transcription("Journal. Olen taas palannut.", config)
 
-    assert result == ("PÄIVÄKIRJA", True)
+    assert result == ("PÄIVÄKIRJA", True, None)
     # Handler receives the text AFTER the trigger word, period stripped with it
     assert mock_run.call_args[0][0][2] == "Olen taas palannut."
 
@@ -375,7 +488,7 @@ def test_route_trigger_with_various_punctuation():
         with patch("src.router.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
             result = route_transcription(f"{trigger} do the thing", config)
-        assert result == ("WORK", True), f"trigger {trigger!r} failed to match"
+        assert result == ("WORK", True, None), f"trigger {trigger!r} failed to match"
 
 
 def test_route_trigger_punctuation_only_does_not_match():
@@ -390,7 +503,7 @@ def test_route_trigger_punctuation_only_does_not_match():
         result = route_transcription("... the thing", config)
 
     # '...' normalizes to empty -> no match -> default action
-    assert result == ("default", True)
+    assert result == ("default", True, None)
 
 
 def test_route_interior_punctuation_preserved():
@@ -405,4 +518,4 @@ def test_route_interior_punctuation_preserved():
         # 'WO.RK' should NOT match 'WORK' — interior period is significant
         result = route_transcription("WO.RK something", config)
 
-    assert result == ("default", True)
+    assert result == ("default", True, None)

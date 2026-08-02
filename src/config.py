@@ -13,6 +13,7 @@ CONFIG_SCHEMA = {
             "items": {"type": "string"},
         },
         "delete_after_processing": {"type": "boolean"},
+        "fallback_on_failure": {"type": "boolean"},
         "transcription_log": {"type": "string"},
         "backend": {"type": "string"},
         "api_base": {"type": "string"},
@@ -60,6 +61,7 @@ CONFIG_SCHEMA = {
 DEFAULTS = {
     "watched_extensions": DEFAULT_EXTENSIONS,
     "delete_after_processing": False,
+    "fallback_on_failure": True,
     "backend": "litellm",
     "model": "whisper-1",
     "writable_paths": [],

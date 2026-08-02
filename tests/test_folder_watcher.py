@@ -59,7 +59,7 @@ def test_detects_configured_extensions():
     assert handler.process_audio_file.call_count == 4
 
 
-@patch("src.folder_watcher.route_transcription", return_value=("FILE", True))
+@patch("src.folder_watcher.route_transcription", return_value=("FILE", True, None))
 @patch("src.folder_watcher.transcribe_audio", return_value="file my note")
 @patch("src.folder_watcher._wait_for_file_stable")
 def test_process_audio_full_pipeline(mock_wait, mock_transcribe, mock_route):
@@ -77,7 +77,7 @@ def test_process_audio_full_pipeline(mock_wait, mock_transcribe, mock_route):
 
 
 @patch("src.folder_watcher.os.remove")
-@patch("src.folder_watcher.route_transcription", return_value=("FILE", True))
+@patch("src.folder_watcher.route_transcription", return_value=("FILE", True, None))
 @patch("src.folder_watcher.transcribe_audio", return_value="file my note")
 @patch("src.folder_watcher._wait_for_file_stable")
 def test_deletes_file_when_configured(mock_wait, mock_transcribe, mock_route, mock_remove):
@@ -91,7 +91,7 @@ def test_deletes_file_when_configured(mock_wait, mock_transcribe, mock_route, mo
 
 
 @patch("src.folder_watcher.os.remove")
-@patch("src.folder_watcher.route_transcription", return_value=("FILE", True))
+@patch("src.folder_watcher.route_transcription", return_value=("FILE", True, None))
 @patch("src.folder_watcher.transcribe_audio", return_value="file my note")
 @patch("src.folder_watcher._wait_for_file_stable")
 def test_keeps_file_when_not_configured(mock_wait, mock_transcribe, mock_route, mock_remove):
@@ -105,7 +105,7 @@ def test_keeps_file_when_not_configured(mock_wait, mock_transcribe, mock_route, 
 
 
 @patch("src.folder_watcher.log_transcription")
-@patch("src.folder_watcher.route_transcription", return_value=("FILE", True))
+@patch("src.folder_watcher.route_transcription", return_value=("FILE", True, None))
 @patch("src.folder_watcher.transcribe_audio", return_value="file my note")
 @patch("src.folder_watcher._wait_for_file_stable")
 def test_logs_transcription(mock_wait, mock_transcribe, mock_route, mock_log):
@@ -116,7 +116,8 @@ def test_logs_transcription(mock_wait, mock_transcribe, mock_route, mock_log):
     handler.process_audio_file("/tmp/audio/test.wav")
 
     mock_log.assert_called_once_with(
-        "/tmp/test.log", "/tmp/audio/test.wav", "file my note", "FILE", True
+        "/tmp/test.log", "/tmp/audio/test.wav", "file my note", "FILE", True,
+        error=None,
     )
 
 

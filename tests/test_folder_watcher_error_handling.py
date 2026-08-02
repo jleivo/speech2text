@@ -50,7 +50,7 @@ def test_log_failure_does_not_crash_watcher():
 
     with patch("src.folder_watcher._wait_for_file_stable", return_value=True), \
          patch("src.folder_watcher.transcribe_audio", return_value="file note"), \
-         patch("src.folder_watcher.route_transcription", return_value=("FILE", True)), \
+         patch("src.folder_watcher.route_transcription", return_value=("FILE", True, None)), \
          patch("src.folder_watcher.log_transcription", side_effect=IOError("log boom")), \
          patch("src.folder_watcher.os.remove") as mock_remove:
         # Should not raise
@@ -67,7 +67,7 @@ def test_delete_failure_does_not_crash_watcher():
 
     with patch("src.folder_watcher._wait_for_file_stable", return_value=True), \
          patch("src.folder_watcher.transcribe_audio", return_value="file note"), \
-         patch("src.folder_watcher.route_transcription", return_value=("FILE", True)), \
+         patch("src.folder_watcher.route_transcription", return_value=("FILE", True, None)), \
          patch("src.folder_watcher.os.remove", side_effect=OSError("delete boom")):
         # Should not raise
         handler.process_audio_file("/tmp/audio/test.wav")
@@ -84,7 +84,7 @@ def test_file_not_deleted_when_no_action_matched():
 
     with patch("src.folder_watcher._wait_for_file_stable", return_value=True), \
          patch("src.folder_watcher.transcribe_audio", return_value="some unmatched words"), \
-         patch("src.folder_watcher.route_transcription", return_value=(None, False)), \
+         patch("src.folder_watcher.route_transcription", return_value=(None, False, "no match")), \
          patch("src.folder_watcher.os.remove") as mock_remove:
         handler.process_audio_file("/tmp/audio/test.wav")
 

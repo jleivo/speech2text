@@ -43,3 +43,29 @@ def test_log_transcription_no_action():
         with open(log_path) as f:
             record = json.loads(f.readline())
         assert record["action"] is None
+
+
+def test_log_transcription_records_error():
+    """A failure reason is recorded in the 'error' field when provided."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        log_path = os.path.join(tmpdir, "test.log")
+        log_transcription(
+            log_path, "test.wav", "journal text", "PÄIVÄKIRJA", False,
+            error="exit code 2: Error: daily note not found",
+        )
+
+        with open(log_path) as f:
+            record = json.loads(f.readline())
+        assert record["success"] is False
+        assert record["error"] == "exit code 2: Error: daily note not found"
+
+
+def test_log_transcription_omits_error_when_none():
+    """Successful entries stay compact — no 'error' key when None."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        log_path = os.path.join(tmpdir, "test.log")
+        log_transcription(log_path, "test.wav", "hello", "FILE", True)
+
+        with open(log_path) as f:
+            record = json.loads(f.readline())
+        assert "error" not in record

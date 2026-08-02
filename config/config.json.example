@@ -2,6 +2,7 @@
     "folder_to_watch": "/srv/speech2text/audio_transfer",
     "watched_extensions": [".wav", ".mp3", ".flac", ".m4a", ".ogg"],
     "delete_after_processing": true,
+    "fallback_on_failure": true,
     "transcription_log": "/srv/speech2text/speech2text.log",
     "backend": "litellm",
     "api_base": "http://litellm.intra.leivo:4000/v1",

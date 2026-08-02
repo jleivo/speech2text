@@ -14,6 +14,7 @@ def test_load_valid_config():
             "folder_to_watch": "/tmp/audio",
             "watched_extensions": [".wav", ".mp3"],
             "delete_after_processing": True,
+            "fallback_on_failure": True,
             "transcription_log": "/tmp/speech2text.log",
             "backend": "litellm",
             "model": "whisper-1",
@@ -47,6 +48,7 @@ def test_load_minimal_config_gets_defaults():
         config = load_config(config_path)
         assert config["watched_extensions"] == DEFAULT_EXTENSIONS
         assert config["delete_after_processing"] is False
+        assert config["fallback_on_failure"] is True
         assert config["backend"] == "litellm"
         assert config["model"] == "whisper-1"
 
