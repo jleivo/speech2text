@@ -1,8 +1,5 @@
-# speech2text CI/CD — Gitea Actions (air-gapped)
-# Runs on the Act Runner (tucgitrunp01, CT 128)
-#
-# No external actions — the runner has no internet access.
-# Uses git clone + system Python.
+# speech2text CI/CD — Gitea Actions
+# Runs on the Act Runner (tucgitrunp01, CT 137) in HOST mode (no Docker)
 #
 # Triggers:
 #   - Push to any branch: lint + test (fast feedback)
@@ -20,61 +17,42 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  VENV: /tmp/ci-venv
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Diagnose environment
-        run: |
-          echo "=== Network ==="
-          hostname
-          ip addr show 2>/dev/null | grep "inet " || ifconfig 2>/dev/null | grep "inet "
-          echo "=== DNS ==="
-          cat /etc/resolv.conf 2>/dev/null
-          getent hosts gitea.intra.leivo 2>&1 || echo "DNS: gitea.intra.leivo NOT RESOLVED"
-          echo "=== Gitea reachable? ==="
-          curl -sk --max-time 5 https://192.168.8.119/api/v1/version 2>&1 || echo "HTTPS to 192.168.8.119 FAILED"
-          echo "=== Python ==="
-          python3 --version
-          pip3 --version 2>/dev/null || echo "no pip3"
-          echo "=== Git ==="
-          git --version
-
       - name: Checkout
         env:
           GITEA_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Try hostname first, fall back to IP
           CLONE_URL="https://gitea.intra.leivo/fletcher/speech2text.git"
           if ! getent hosts gitea.intra.leivo >/dev/null 2>&1; then
             echo "DNS unavailable — using IP"
             CLONE_URL="https://192.168.8.119/fletcher/speech2text.git"
           fi
-          # Authenticated clone (private repo)
           git -c http.sslVerify=false clone --depth 1 \
             --branch "${GITHUB_REF_NAME}" \
-            "https://x-access-token:${GITEA_TOKEN}@${CLONE_URL#https://}" .
+            "https://x-access-token:${GITE...//}" .
           echo "Cloned: $(git log --oneline -1)"
 
       - name: Install dependencies
         run: |
-          python3 -m pip install --upgrade pip --quiet
-          # CPU-only torch (conftest mocks whisper/torch anyway)
-          pip install torch --index-url https://download.pytorch.org/whl/cpu --quiet
-          pip install -r requirements.txt --quiet
-          pip install pylint --quiet
+          python3 -m venv ${{ env.VENV }}
+          ${{ env.VENV }}/bin/pip install --upgrade pip --quiet
+          ${{ env.VENV }}/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu --quiet
+          ${{ env.VENV }}/bin/pip install -r requirements.txt --quiet
+          ${{ env.VENV }}/bin/pip install pylint --quiet
 
-      - name: Pylint — handlers
+      - name: Pylint
         run: |
-          pylint handlers/ --disable=R0801 --fail-under=8.0 || true
-
-      - name: Pylint — src
-        run: |
-          pylint src/ --disable=R0801 --fail-under=8.0 || true
+          ${{ env.VENV }}/bin/pylint handlers/ src/ --disable=R0801 --fail-under=8.0 || true
 
       - name: Run tests
         run: |
-          python3 -m pytest tests/ -v --tb=short -x
+          ${{ env.VENV }}/bin/python -m pytest tests/ -v --tb=short -x
 
   deploy:
     needs: lint-and-test
@@ -83,7 +61,6 @@ jobs:
     steps:
       - name: Deploy to tucspeechp01
         run: |
-          # Write deploy key from secrets
           mkdir -p ~/.ssh
           echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
