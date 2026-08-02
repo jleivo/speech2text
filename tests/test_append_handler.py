@@ -262,6 +262,115 @@ class TestErrorHandling:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+class TestTemplate:
+    """A configured template seeds newly created files."""
+
+    def setup_method(self):
+        """Create temp dirs for output and templates."""
+        self.tmpdir = tempfile.mkdtemp()  # pylint: disable=attribute-defined-outside-init
+        self.tmpldir = tempfile.mkdtemp()  # pylint: disable=attribute-defined-outside-init
+
+    def teardown_method(self):
+        """Remove temp directories."""
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+        shutil.rmtree(self.tmpldir, ignore_errors=True)
+
+    def _write_template(self, name, content):
+        """Write a template file and return its absolute path."""
+        path = os.path.join(self.tmpldir, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        return path
+
+    def test_template_seeds_new_file(self):
+        """A new file gets the template content before the entry."""
+        tmpl = self._write_template("blog.md", "# Blog\n\n")
+        env = {
+            "S2T_DESTINATION": self.tmpdir,
+            "S2T_FILENAME": "blog.md",
+            "S2T_TEMPLATE": tmpl,
+        }
+        _, rc = _run(text="First post", env_override=env)
+        assert rc == 0
+        with open(
+            os.path.join(self.tmpdir, "blog.md"), encoding="utf-8"
+        ) as fh:
+            assert fh.read() == "# Blog\n\nFirst post\n"
+
+    def test_template_date_tokens_expanded(self):
+        """Date tokens inside the template content are expanded."""
+        tmpl = self._write_template("daily.md", "# YYYY-MM-DD\n\n")
+        env = {
+            "S2T_DESTINATION": self.tmpdir,
+            "S2T_FILENAME": "daily.md",
+            "S2T_TEMPLATE": tmpl,
+        }
+        _, rc = _run(text="Entry", env_override=env)
+        assert rc == 0
+        today = datetime.now().strftime("%Y-%m-%d")
+        with open(
+            os.path.join(self.tmpdir, "daily.md"), encoding="utf-8"
+        ) as fh:
+            content = fh.read()
+        assert content == f"# {today}\n\nEntry\n"
+
+    def test_template_not_reapplied_to_existing_file(self):
+        """Appending to an existing file does not rewrite the template."""
+        tmpl = self._write_template("t.md", "# Header\n\n")
+        env = {
+            "S2T_DESTINATION": self.tmpdir,
+            "S2T_FILENAME": "t.md",
+            "S2T_TEMPLATE": tmpl,
+        }
+        _run(text="First", env_override=env)
+        _run(text="Second", env_override=env)
+        with open(
+            os.path.join(self.tmpdir, "t.md"), encoding="utf-8"
+        ) as fh:
+            content = fh.read()
+        # Header appears exactly once.
+        assert content.count("# Header") == 1
+        assert content == "# Header\n\nFirst\nSecond\n"
+
+    def test_template_without_trailing_newline(self):
+        """An entry still starts on its own line after a bare template."""
+        tmpl = self._write_template("bare.md", "# NoNewline")
+        env = {
+            "S2T_DESTINATION": self.tmpdir,
+            "S2T_FILENAME": "bare.md",
+            "S2T_TEMPLATE": tmpl,
+        }
+        _, rc = _run(text="Entry", env_override=env)
+        assert rc == 0
+        with open(
+            os.path.join(self.tmpdir, "bare.md"), encoding="utf-8"
+        ) as fh:
+            assert fh.read() == "# NoNewline\nEntry\n"
+
+    def test_missing_template_is_error(self):
+        """A configured-but-missing template file -> rc 2."""
+        env = {
+            "S2T_DESTINATION": self.tmpdir,
+            "S2T_FILENAME": "x.md",
+            "S2T_TEMPLATE": os.path.join(self.tmpldir, "ghost.md"),
+        }
+        _, rc = _run(text="Entry", env_override=env)
+        assert rc == 2
+
+    def test_no_template_configured_still_works(self):
+        """Without S2T_TEMPLATE the handler behaves as before."""
+        env = {
+            "S2T_DESTINATION": self.tmpdir,
+            "S2T_FILENAME": "plain.md",
+        }
+        _, rc = _run(text="Just text", env_override=env)
+        assert rc == 0
+        with open(
+            os.path.join(self.tmpdir, "plain.md"), encoding="utf-8"
+        ) as fh:
+            assert fh.read() == "Just text\n"
+
+
 class TestConfigPrecedence:
     """S2T_DESTINATION and S2T_FILENAME drive behaviour."""
 

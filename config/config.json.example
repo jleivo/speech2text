@@ -29,7 +29,8 @@
         "BLOGI": {
             "script_path": "handlers/append_handler.py",
             "destination": "/srv/Obsidian/Inbox",
-            "filename": "blogi-YYYY-MM-DD.md"
+            "filename": "blogi-YYYY-MM-DD.md",
+            "template": "templates/blogi.md"
         },
         "GENERAL": {
             "script_path": "handlers/append_handler.py",
