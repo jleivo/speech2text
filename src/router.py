@@ -1,7 +1,15 @@
+"""Route transcriptions to handler scripts based on magic words.
+
+The router inspects the first word of a transcription, matches it against
+configured magic words (and their aliases), and dispatches the remaining
+text to the corresponding handler as a subprocess. Handler parameters are
+forwarded from config as S2T_<KEY> environment variables.
+"""
 import logging
 import os
 import subprocess
 import sys
+import unicodedata
 
 logger = logging.getLogger(__name__)
 
@@ -18,19 +26,46 @@ def _sanitize_text(text):
     return text.replace("\x00", "")
 
 
+def _normalize_trigger(word):
+    """Strip surrounding punctuation/symbols from a trigger word for matching.
+
+    Whisper attaches sentence punctuation to the first word — e.g. a spoken
+    "Journal" is transcribed as "Journal." — which would break an exact match
+    against the configured magic word. This strips leading/trailing Unicode
+    punctuation (P*) and symbols (S*) so "Journal.", "PÄIVÄKIRJA," and
+    "(WORK)" all match their bare keywords. Interior characters are preserved,
+    and the returned value is uppercased for case-insensitive comparison.
+    """
+    stripped = word.strip()
+    while stripped and unicodedata.category(stripped[0])[0] in ("P", "S"):
+        stripped = stripped[1:]
+    while stripped and unicodedata.category(stripped[-1])[0] in ("P", "S"):
+        stripped = stripped[:-1]
+    return stripped.upper()
+
+
 def _matches(word_config, first_word):
     """Return True if first_word matches the primary keyword or any alias.
 
-    Matching is case-insensitive. Aliases are read from the optional
-    "aliases" list in the magic-word config.
+    Matching is case-insensitive and ignores surrounding punctuation (see
+    _normalize_trigger). Aliases are read from the optional "aliases" list
+    in the magic-word config.
     """
-    target = first_word.upper()
+    target = _normalize_trigger(first_word)
     if target == word_config.get("_keyword", "").upper():
         return True
     return any(target == alias.upper() for alias in word_config.get("aliases", []))
 
 
 def route_transcription(transcription, config, source_file=None):
+    """Route a transcription to the matching handler script.
+
+    Splits off the first word and matches it (case-insensitively, ignoring
+    surrounding punctuation) against each magic word and its aliases. On a
+    match, runs that handler with the remaining text. Otherwise falls back
+    to default_action (with the full text), or returns (None, False) if no
+    default is configured so the audio file is preserved.
+    """
     words = transcription.split(None, 1)
     first_word = words[0] if words else ""
     remaining = words[1] if len(words) > 1 else ""

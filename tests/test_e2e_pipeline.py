@@ -100,7 +100,20 @@ def test_e2e_pipeline_with_voice_001():
         try:
             loaded_config = load_config(config_path)
             handler = FolderWatcherHandler(loaded_config)
-            handler.process_audio_file(audio_dest)
+
+            # The transcription backends (LiteLLM + local whisper) are not
+            # reliably available in the test environment, and conftest.py
+            # mocks whisper so a fallback would yield a MagicMock rather than
+            # text. Stub transcribe_audio to return a real transcription so
+            # this test exercises the REAL router + handler pipeline (the
+            # part under test) without depending on an audio backend.
+            from unittest.mock import patch as _patch
+
+            fake_text = "NOTE end to end pipeline test entry"
+            with _patch(
+                "src.folder_watcher.transcribe_audio", return_value=fake_text
+            ):
+                handler.process_audio_file(audio_dest)
 
             # Wait a moment for async writes
             time.sleep(1)
@@ -112,6 +125,7 @@ def test_e2e_pipeline_with_voice_001():
             content = open(note_file).read()
             assert "# Voice Notes" in content
             assert "- **[" in content  # timestamped entry
+            assert "end to end pipeline test entry" in content
         finally:
             os.environ.pop("OPENAI_API_BASE", None)
             os.environ.pop("S2T_NOTE_DIR", None)

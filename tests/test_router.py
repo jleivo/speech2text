@@ -337,3 +337,72 @@ def test_route_alias_not_forwarded_as_env():
 
     env = mock_run.call_args[1]["env"]
     assert "S2T_ALIASES" not in env
+
+
+def test_route_trigger_with_trailing_period():
+    """A trailing period (Whisper sentence punctuation) does not break matching.
+
+    Regression: a spoken 'Journal' is transcribed as 'Journal.' which used to
+    fall through to the default action instead of matching the alias.
+    """
+    config = {
+        "magic_words": {
+            "PÄIVÄKIRJA": {
+                "script_path": "/bin/journal.py",
+                "aliases": ["JOURNAL"],
+            }
+        },
+        "default_action": {"script_path": "/bin/default.py"},
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        result = route_transcription("Journal. Olen taas palannut.", config)
+
+    assert result == ("PÄIVÄKIRJA", True)
+    # Handler receives the text AFTER the trigger word, period stripped with it
+    assert mock_run.call_args[0][0][2] == "Olen taas palannut."
+
+
+def test_route_trigger_with_various_punctuation():
+    """Leading/trailing punctuation and symbols are ignored when matching."""
+    config = {
+        "magic_words": {"WORK": {"script_path": "/bin/work.py"}},
+        "default_action": {"script_path": "/bin/default.py"},
+    }
+
+    for trigger in ("WORK,", "WORK!", "(WORK)", "WORK:", "«WORK»", "WORK..."):
+        with patch("src.router.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            result = route_transcription(f"{trigger} do the thing", config)
+        assert result == ("WORK", True), f"trigger {trigger!r} failed to match"
+
+
+def test_route_trigger_punctuation_only_does_not_match():
+    """A first word that is entirely punctuation does not match a keyword."""
+    config = {
+        "magic_words": {"WORK": {"script_path": "/bin/work.py"}},
+        "default_action": {"script_path": "/bin/default.py"},
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        result = route_transcription("... the thing", config)
+
+    # '...' normalizes to empty -> no match -> default action
+    assert result == ("default", True)
+
+
+def test_route_interior_punctuation_preserved():
+    """Punctuation inside the trigger word is preserved (no false match)."""
+    config = {
+        "magic_words": {"WORK": {"script_path": "/bin/work.py"}},
+        "default_action": {"script_path": "/bin/default.py"},
+    }
+
+    with patch("src.router.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        # 'WO.RK' should NOT match 'WORK' — interior period is significant
+        result = route_transcription("WO.RK something", config)
+
+    assert result == ("default", True)
