@@ -26,6 +26,16 @@
             "destination": "/srv/Obsidian/Archives/dailynotes",
             "aliases": ["JOURNAL", "PÄIVÄ"]
         },
+        "BLOGI": {
+            "script_path": "handlers/append_handler.py",
+            "destination": "/srv/Obsidian/Inbox",
+            "filename": "blogi-YYYY-MM-DD.md"
+        },
+        "GENERAL": {
+            "script_path": "handlers/append_handler.py",
+            "destination": "/srv/Obsidian/Inbox",
+            "filename": "general.md"
+        },
         "FILE": {
             "script_path": "examples/create_note.py"
         },
