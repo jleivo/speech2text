@@ -1,8 +1,8 @@
 # speech2text CI/CD — Gitea Actions (air-gapped)
 # Runs on the Act Runner (tucgitrunp01, CT 128)
 #
-# No external actions (actions/checkout, actions/setup-python) —
-# the runner has no internet access. Uses git clone + system Python.
+# No external actions — the runner has no internet access.
+# Uses git clone + system Python.
 #
 # Triggers:
 #   - Push to any branch: lint + test (fast feedback)
@@ -24,10 +24,36 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Diagnose environment
         run: |
-          git clone --depth 1 --branch "${GITHUB_REF_NAME}" \
-            "https://gitea.intra.leivo/fletcher/speech2text.git" .
+          echo "=== Network ==="
+          hostname
+          ip addr show 2>/dev/null | grep "inet " || ifconfig 2>/dev/null | grep "inet "
+          echo "=== DNS ==="
+          cat /etc/resolv.conf 2>/dev/null
+          getent hosts gitea.intra.leivo 2>&1 || echo "DNS: gitea.intra.leivo NOT RESOLVED"
+          echo "=== Gitea reachable? ==="
+          curl -sk --max-time 5 https://192.168.8.119/api/v1/version 2>&1 || echo "HTTPS to 192.168.8.119 FAILED"
+          echo "=== Python ==="
+          python3 --version
+          pip3 --version 2>/dev/null || echo "no pip3"
+          echo "=== Git ==="
+          git --version
+
+      - name: Checkout
+        env:
+          GITEA_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Try hostname first, fall back to IP
+          CLONE_URL="https://gitea.intra.leivo/fletcher/speech2text.git"
+          if ! getent hosts gitea.intra.leivo >/dev/null 2>&1; then
+            echo "DNS unavailable — using IP"
+            CLONE_URL="https://192.168.8.119/fletcher/speech2text.git"
+          fi
+          # Authenticated clone (private repo)
+          git -c http.sslVerify=false clone --depth 1 \
+            --branch "${GITHUB_REF_NAME}" \
+            "https://x-access-token:${GITEA_TOKEN}@${CLONE_URL#https://}" .
           echo "Cloned: $(git log --oneline -1)"
 
       - name: Install dependencies
