@@ -42,6 +42,14 @@
         },
         "APPEND": {
             "script_path": "examples/append_log.py"
+        },
+        "TASK": {
+            "script_path": "handlers/task_handler.py",
+            "destination": "/srv/Obsidian/Inbox",
+            "api_key": "<LITELLM_API_KEY>",
+            "api_base": "http://litellm.intra.leivo:4000/v1",
+            "model": "gpt-4o-mini",
+            "aliases": ["TEHTÄVÄ"]
         }
     }
 }
