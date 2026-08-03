@@ -138,3 +138,4 @@ deploy/              # Deployment (systemd template, setup.sh, sudoers fragment)
 config/              # Configuration files
 tests/               # Unit and integration tests
 ```
+# CI verified
